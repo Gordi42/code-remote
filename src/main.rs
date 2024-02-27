@@ -1,19 +1,22 @@
+use color_eyre::eyre::Result;
+
 pub mod cluster;
 pub mod spawner;
+pub mod cluster_state;
 
-fn main() {
+fn main() -> Result<()> {
     let cluster = cluster::Cluster::new(
         "levante", 
         "levante.dkrz.de", 
         "u301533", 
-        "/home/silvano/.ssh/levante_key").unwrap();
+        "/home/silvano/.ssh/levante_key");
     // let cluster = cluster::Cluster::new(
     //     "levante", 
     //     "levante.dkrz.de", 
     //     "u301533", 
     //     "/tmp/id_rsa").unwrap();
     //
-    cluster.add_cluster_to_ssh_config();
+    cluster.add_cluster_to_ssh_config()?;
 
     let mut spawn = spawner::Spawner::new(&cluster);
     spawn.preset_name = String::from("test_very_long_name_for_a_job");
@@ -23,9 +26,9 @@ fn main() {
     spawn.working_directory = String::from("/work/uo0780/u301533/FRIDOM/");
 
 
-    let mut sess = cluster.create_session().unwrap();
-    spawn.spawn(&mut sess).unwrap();
+    let mut sess = cluster.create_session()?;
+    spawn.spawn(&mut sess)?;
 
-
+    Ok(())
 }
 

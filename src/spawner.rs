@@ -4,6 +4,7 @@ use std::io::Read;
 use std::io;
 use regex::Regex;
 use std::process::Command;
+use color_eyre::eyre::Result;
 
 const NODE_NAME_REGEX: &str = r"l\d{5}";
 
@@ -18,6 +19,9 @@ pub struct Spawner<'a> {
 }
 
 impl Spawner<'_> {
+    // =======================================================================
+    //             CONSTRUCTORS
+    // =======================================================================
     pub fn new(cluster: &Cluster) -> Spawner {
         Spawner {
             preset_name: String::from("new"),
@@ -28,6 +32,30 @@ impl Spawner<'_> {
             working_directory: String::from(""),
             other_options: String::from(""),
         }
+    }
+
+    // =======================================================================
+    //             MAIN FUNCTIONS
+    // =======================================================================
+    
+    pub fn spawn(&self, session: &mut Session) -> Result<()> {
+        // get the node name
+        let mut node_name = self.get_node_name(session)?;
+        // if the node name is not found, spawn the job
+        if node_name.is_none() {
+            self.salloc(session)?;
+            node_name = self.get_node_name(session)?;
+        }
+        let node_name = node_name.unwrap(); 
+        let node_alias = format!("{}-{}", self.cluster.name, node_name);
+        // append teh node name to the ssh config file
+        let config_entry = self.format_config_entry(&node_name);
+        self.cluster.append_ssh_config(&config_entry)?;
+
+        // clear the node from the known hosts file
+        self.clear_known_host(&node_alias)?;
+        self.spawn_vscode(&node_alias, session)?;
+        Ok(())
     }
 
     pub fn get_spawn_command(&self) -> String {
@@ -56,40 +84,15 @@ impl Spawner<'_> {
         command
     }
 
-    pub fn salloc(&self, session: &mut Session) -> Result<(), ssh2::Error> {
-        let command = self.get_spawn_command();
-        self.execute_and_forward(session, &command)
-    }
-
-    pub fn spawn(&self, session: &mut Session) -> Result<(), ssh2::Error> {
-        // get the node name
-        let mut node_name = self.get_node_name(session);
-        // if the node name is not found, spawn the job
-        if node_name.is_none() {
-            self.salloc(session)?;
-            node_name = self.get_node_name(session);
-        }
-        let node_name = node_name.unwrap();
-        let node_alias = format!("{}-{}", self.cluster.name, node_name);
-        // append teh node name to the ssh config file
-        let config_entry = self.format_config_entry(&node_name);
-        self.cluster.append_ssh_config(&config_entry);
-
-        // clear the node from the known hosts file
-        self.clear_known_host(&node_alias);
-        self.spawn_vscode(&node_alias, session);
-        Ok(())
-    }
-
-    pub fn spawn_vscode(&self, node_alias: &str, session: &mut Session) {
+    pub fn spawn_vscode(&self, node_alias: &str, session: &mut Session) -> Result<()> {
         // get the home directory if the working directory is not set
         let mut code_wd = self.working_directory.clone();
         if self.working_directory.is_empty() {
             let command = "echo $HOME";
-            let mut channel = session.channel_session().unwrap();
-            channel.exec(&command).unwrap();
+            let mut channel = session.channel_session()?;
+            channel.exec(&command)?;
             let mut output = String::new();
-            channel.read_to_string(&mut output).unwrap();
+            channel.read_to_string(&mut output)?;
             code_wd = output.trim().to_string();
         }
 
@@ -99,55 +102,12 @@ impl Spawner<'_> {
             .arg("--folder-uri").arg(remote_argument)
             .output()
             .expect("Failed to start Visual Studio Code");
-    }
-
-    pub fn clear_known_host(&self, node_alias: &str) {
-        if std::path::Path::new("$HOME/.ssh/known_hosts").exists() {
-            let clear_command = format!(
-                "ssh-keygen -f $HOME/.ssh/known_hosts -R {}", node_alias);
-            Command::new(clear_command)
-                .spawn().expect("Failed to clear the known host");
-            return;
-        }
-    }
-
-    pub fn get_node_name(&self, session: &mut Session) -> Option<String> {
-
-        // get the node name
-        let command = format!("squeue -u $USER --name {}", self.preset_name);
-        let mut channel = session.channel_session().unwrap();
-        channel.exec(&command).unwrap();
-        // read the output
-        let mut output = String::new();
-        channel.read_to_string(&mut output).unwrap();
-
-        // Create a regex pattern to match "lXXXXX"
-        let re = Regex::new(NODE_NAME_REGEX).unwrap();
-
-        // Search for the pattern in the text
-        if let Some(mat) = re.find(&output) {
-            let pattern = mat.as_str();
-            Some(String::from(pattern))
-        } else {
-            None
-        }
-
-    }
-
-    pub fn execute_and_forward(&self, session: &Session, command: &str) -> Result<(), ssh2::Error>{
-        let mut channel = session.channel_session().unwrap();
-        channel.exec(command)?;
-
-        println!("{}", command);
-
-        let mut ssh_stderr = channel.stderr();
-        let stderr = io::stderr();
-        let mut stderr = stderr.lock();
-        io::copy(&mut ssh_stderr, &mut stderr).unwrap();
-
-        channel.wait_close()?;
         Ok(())
     }
+
+    // =======================================================================
+    //            FILE OPERATIONS
+    // =======================================================================
 
     pub fn format_config_entry(&self, node_name: &str) -> String {
         let host = format!("{}-{}", self.cluster.name, node_name);
@@ -158,6 +118,63 @@ impl Spawner<'_> {
             self.cluster.user, 
             self.cluster.identity_file, 
             self.cluster.name)
+    }
+
+    pub fn clear_known_host(&self, node_alias: &str) -> Result<()> {
+        if std::path::Path::new("$HOME/.ssh/known_hosts").exists() {
+            let clear_command = format!(
+                "ssh-keygen -f $HOME/.ssh/known_hosts -R {}", node_alias);
+            Command::new(clear_command)
+                .spawn()?;
+        }
+        Ok(())
+    }
+
+    // =======================================================================
+    //             SSH OPERATIONS
+    // =======================================================================
+
+    pub fn get_node_name(&self, session: &mut Session) -> Result<Option<String>> {
+
+        // get the node name
+        let command = format!("squeue -u $USER --name {}", self.preset_name);
+        let mut channel = session.channel_session()?;
+        channel.exec(&command)?;
+        // read the output
+        let mut output = String::new();
+        channel.read_to_string(&mut output)?;
+
+        // Create a regex pattern to match "lXXXXX"
+        let re = Regex::new(NODE_NAME_REGEX)?;
+
+        // Search for the pattern in the text
+        if let Some(mat) = re.find(&output) {
+            let pattern = mat.as_str();
+            Ok(Some(String::from(pattern)))
+        } else {
+            Ok(None)
+        }
+
+    }
+
+    pub fn execute_and_forward(&self, session: &Session, command: &str) -> Result<()>{
+        let mut channel = session.channel_session()?;
+        channel.exec(command)?;
+
+        println!("{}", command);
+
+        let mut ssh_stderr = channel.stderr();
+        let stderr = io::stderr();
+        let mut stderr = stderr.lock();
+        io::copy(&mut ssh_stderr, &mut stderr)?;
+
+        channel.wait_close()?;
+        Ok(())
+    }
+
+    pub fn salloc(&self, session: &mut Session) -> Result<()> {
+        let command = self.get_spawn_command();
+        Ok(self.execute_and_forward(session, &command)?)
     }
 
 }

@@ -5,22 +5,20 @@ use crate::starter::{
 use color_eyre::eyre::Result;
 
 #[derive(Debug, PartialEq)]
-pub struct SpawnerState<'a> {
-    counter: u32,
-    cluster: &'a Cluster,
+pub struct SpawnerState {
+    pub counter: u32,
     spawner_list: TomlList<Spawner>,
     _new_spawner: Spawner,
 }
 
-impl SpawnerState<'_> {
+impl SpawnerState {
     // =======================================================================
     //             CONSTRUCTORS
     // =======================================================================
-    pub fn new_empty(cluster: &Cluster) -> SpawnerState {
+    pub fn new_empty() -> SpawnerState {
         let spawner_list: TomlList<Spawner> = TomlList::new();
         SpawnerState {
             counter: 0,
-            cluster: cluster,
             spawner_list: spawner_list,
             _new_spawner: Spawner::new(),
         }
@@ -30,7 +28,6 @@ impl SpawnerState<'_> {
         let spawner_list: TomlList<Spawner> = TomlList::load(cluster.name.as_str())?;
         Ok(SpawnerState {
             counter: 0,
-            cluster: cluster,
             spawner_list: spawner_list,
             _new_spawner: Spawner::new(),
         })
@@ -52,14 +49,21 @@ impl SpawnerState<'_> {
         self.spawner_list.get(index)
     }
 
+    pub fn get_spawner_names(&self) -> Vec<String> {
+        let mut spawn_list: Vec<String> = self.spawner_list.entry
+            .iter().map(|c| c.preset_name.clone()).collect();
+        spawn_list.push("New Preset".to_string());
+        spawn_list
+    }
+
     // =======================================================================
     //  SPAWN OPERATIONS
     // =======================================================================
 
-    pub fn spawn(self) -> Result<()> {
+    pub fn spawn(&self, cluster: &Cluster) -> Result<()> {
         let spawner = self.get_spawner()?;
-        let mut session = self.cluster.create_session()?;
-        spawner.spawn(&mut session, self.cluster)?;
+        let mut session = cluster.create_session()?;
+        spawner.spawn(&mut session, cluster)?;
         Ok(())
     }
 
@@ -76,12 +80,12 @@ impl SpawnerState<'_> {
     //            FILE OPERATIONS
     // =======================================================================
 
-    pub fn save_spawner_list(&self) -> Result<()> {
-        self.spawner_list.save(self.cluster.name.as_str())
+    pub fn save_spawner_list(&self, cluster: &Cluster) -> Result<()> {
+        self.spawner_list.save(cluster.name.as_str())
     }
 
-    pub fn load_spawner_list(&mut self) -> Result<()> {
-        let name = self.cluster.name.as_str();
+    pub fn load_spawner_list(&mut self, cluster: &Cluster) -> Result<()> {
+        let name = cluster.name.as_str();
         self.spawner_list = TomlList::load(name)?;
         Ok(())
     }
@@ -117,16 +121,13 @@ mod tests {
 
     #[test]
     fn test_new() {
-        let cluster = Cluster::new_empty();
-        let spawner_state = SpawnerState::new_empty(&cluster);
+        let spawner_state = SpawnerState::new_empty();
         assert_eq!(spawner_state.counter, 0);
-        assert_eq!(spawner_state.cluster, &cluster);
     }
 
     #[test]
     fn test_add_spawner() {
-        let cluster = Cluster::new_empty();
-        let mut spawner_state = SpawnerState::new_empty(&cluster);
+        let mut spawner_state = SpawnerState::new_empty();
         let spawner = Spawner::new();
         spawner_state.add_spawner(spawner);
         assert_eq!(spawner_state.spawner_list.len(), 1);
@@ -136,10 +137,10 @@ mod tests {
     fn test_save_spawner_list() {
         let mut cluster = Cluster::new_empty();
         cluster.name = "test_cluster".to_string();
-        let mut spawner_state = SpawnerState::new_empty(&cluster);
+        let mut spawner_state = SpawnerState::new_empty();
         let spawner = Spawner::new();
         spawner_state.add_spawner(spawner);
-        spawner_state.save_spawner_list().unwrap();
+        spawner_state.save_spawner_list(&cluster).unwrap();
         let home = std::env::var("HOME").unwrap();
         let file = format!("{}/.config/code-remote/test_cluster.toml", home);
         assert!(std::path::Path::new(&file).exists());

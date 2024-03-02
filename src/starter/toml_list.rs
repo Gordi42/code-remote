@@ -68,7 +68,7 @@ impl<T: Serialize> TomlList<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cluster;
+    use crate::starter::cluster;
 
     #[test]
     fn test_new() {

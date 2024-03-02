@@ -5,7 +5,7 @@ use ratatui::{
 };
 use ratatui::{prelude::*, widgets::*};
 
-use crate::tui_main::app::{App, Focus};
+use crate::tui_main::app::{App, Focus, Menu};
 
 pub fn render(app: &mut App, f: &mut Frame) {
 
@@ -37,11 +37,22 @@ pub fn render(app: &mut App, f: &mut Frame) {
         ])
         .split(outer_layout[0]);
 
-    // Render the right section.
-    render_cluster_info(app, f, &layout[1]);
+    match app.menu {
+        Menu::Cluster => {
+            // Render the right section.
+            render_cluster_info(app, f, &layout[1]);
 
-    // Render the left section.
-    render_cluster_list(app, f, &layout[0]);
+            // Render the left section.
+            render_cluster_list(app, f, &layout[0]);
+        }
+        Menu::Spawner => {
+            // Render the right section.
+            render_spawner_info(app, f, &layout[1]);
+            // Render the right section.
+            render_spawner_list(app, f, &layout[0]);
+        }
+    }
+
 }
 
 
@@ -57,6 +68,32 @@ pub fn render_cluster_list(app: &mut App, f: &mut Frame, area: &Rect) {
     let items = app.cluster_state.get_cluster_names();
     let list = List::new(items)
         .block(Block::default().title("Clusters:").borders(Borders::ALL)
+        .border_type(BorderType::Rounded).fg(border_color))
+        .style(Style::default().fg(Color::White))
+        .highlight_style(Style::default().add_modifier(Modifier::BOLD)
+                         .bg(Color::Blue).fg(Color::Black))
+        .highlight_symbol(" > ")
+        .repeat_highlight_symbol(true)
+        .direction(ListDirection::TopToBottom);
+
+    // render the list
+    f.render_stateful_widget(list, *area, &mut state);
+}
+
+pub fn render_spawner_list(app: &mut App, f: &mut Frame, area: &Rect) {
+    // select the border color based on the focus
+    let border_color = match app.focus {
+        Focus::List => Color::Blue,
+        _ => Color::White,};
+    // create a list with the cluster names
+    let mut state = ListState::default();
+    let counter = app.spawner_state.as_ref().map_or(0, |state| state.counter as usize);
+    state.select(Some(counter));
+    let items = app.spawner_state.as_ref().map_or(
+        vec!["No spawners".to_string()],
+        |state| state.get_spawner_names());
+    let list = List::new(items)
+        .block(Block::default().title("Spawners:").borders(Borders::ALL)
         .border_type(BorderType::Rounded).fg(border_color))
         .style(Style::default().fg(Color::White))
         .highlight_style(Style::default().add_modifier(Modifier::BOLD)
@@ -92,4 +129,29 @@ pub fn render_cluster_info(app: &mut App, f: &mut Frame, area: &Rect) {
         *area);
 }
 
+pub fn render_spawner_info(app: &mut App, f: &mut Frame, area: &Rect) {
+    // select the border color based on the focus
+    let border_color = match app.focus {
+        Focus::Info => Color::Blue,
+        _ => Color::White,};
+
+    let spawner = app.spawner_state.as_ref().unwrap().get_spawner().unwrap();
+    let text = format!(
+        "Preset Name: {}\n\
+        Account: {}\n\
+        Partition: {}\n\
+        Time: {}\n\
+        Workdir: {}\n\
+        Other: {}
+        ",
+        spawner.preset_name, spawner.account, spawner.partition,
+        spawner.time, spawner.working_directory, spawner.other_options);
+    f.render_widget(
+        Paragraph::new(text)
+            .block(Block::default().title("Info:").borders(Borders::ALL)
+            .border_type(BorderType::Rounded).fg(border_color))
+            .style(Style::default().fg(Color::White))
+            .alignment(Alignment::Left),
+        *area);
+}
         

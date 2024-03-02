@@ -14,6 +14,8 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
         KeyCode::Char('s') | KeyCode::Char('S') => app.enter_list(),
         KeyCode::Down | KeyCode::Char('j') => app.increment_counter(),
         KeyCode::Up | KeyCode::Char('k') => app.decrement_counter(),
+        KeyCode::Enter | KeyCode::Char('l') | KeyCode::Right => app.pressed_right(),
+        KeyCode::Left | KeyCode::Char('h') => app.pressed_left(),
         _ => {}
     };
 }

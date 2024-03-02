@@ -3,6 +3,12 @@ use crate::starter::{
     cluster_state::ClusterState,
     spawner_state::SpawnerState};
 
+use crossterm::{
+    event::{DisableMouseCapture},
+    terminal::{self, LeaveAlternateScreen},
+};
+use std::io;
+
 pub enum Action {
     Tick,
     Increment,
@@ -47,17 +53,17 @@ impl Default for Menu {
 }
 
 #[derive(Debug, Default)]
-pub struct App<'a> {
+pub struct App {
     pub should_quit: bool,
     pub counter: u8,
     pub cluster_state: ClusterState,
-    pub spawner_state: Option<SpawnerState<'a>>,
+    pub spawner_state: Option<SpawnerState>,
     pub focus: Focus,
     pub input_mode: InputMode,
     pub menu: Menu,
 }
 
-impl App<'_> {
+impl App {
     pub fn new() -> Result<Self> {
         let mut new_app = Self::default();
         new_app.cluster_state = ClusterState::new_load()?;
@@ -73,7 +79,14 @@ impl App<'_> {
     pub fn increment_counter(&mut self) {
         match self.focus {
             Focus::List => {
-                self.cluster_state.next();
+                match self.menu {
+                    Menu::Cluster => {
+                        self.cluster_state.next();
+                    }
+                    Menu::Spawner => {
+                        self.spawner_state.as_mut().unwrap().next();
+                    }
+                };
             }
             Focus::Info => { }
         };
@@ -83,22 +96,46 @@ impl App<'_> {
     pub fn decrement_counter(&mut self) {
         match self.focus {
             Focus::List => {
-                self.cluster_state.previous();
+                match self.menu {
+                    Menu::Cluster => {
+                        self.cluster_state.previous();
+                    }
+                    Menu::Spawner => {
+                        self.spawner_state.as_mut().unwrap().previous();
+                    }
+                };
             }
             Focus::Info => { }
         };
         return
     }
 
-    // pub fn enter_spawner(&mut self) {
-    //     self.spawner_state = Some(
-    //         self.cluster_state.get_spawner_state().unwrap());
-    //     self.menu = Menu::Spawner;
-    // }
-
-    pub fn enter_cluster(&mut self) {
-        self.menu = Menu::Cluster;
+    pub fn pressed_right(&mut self) {
+        match self.menu {
+            Menu::Cluster => {
+                self.spawner_state = Some(
+                    self.cluster_state.get_spawner_state().unwrap());
+                self.menu = Menu::Spawner;
+            }
+            Menu::Spawner => {
+                self.quit();
+                reset().expect("failed to reset the terminal");
+                let cluster = self.cluster_state.get_cluster().unwrap();
+                self.spawner_state.as_ref().unwrap().spawn(&cluster).unwrap();
+            }
+        };
     }
+
+    pub fn pressed_left(&mut self) {
+        match self.menu {
+            Menu::Cluster => { }
+            Menu::Spawner => {
+                self.menu = Menu::Cluster;
+                self.spawner_state = None;
+            }
+        };
+    }
+
 
     pub fn enter_info(&mut self) {
         self.focus = Focus::Info;
@@ -107,4 +144,17 @@ impl App<'_> {
     pub fn enter_list(&mut self) {
         self.focus = Focus::List;
     }
+}
+
+
+
+/// Resets the terminal interface.
+fn reset() -> Result<()> {
+    terminal::disable_raw_mode()?;
+    crossterm::execute!(
+        io::stderr(),
+        LeaveAlternateScreen,
+        DisableMouseCapture
+    )?;
+    Ok(())
 }

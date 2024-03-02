@@ -1,7 +1,8 @@
-use crate::cluster::Cluster;
-use crate::spawner::Spawner;
+use crate::backend::{
+    cluster::Cluster,
+    spawner::Spawner,
+    toml_list::TomlList};
 use color_eyre::eyre::Result;
-use crate::toml_list::TomlList;
 
 #[derive(Debug, PartialEq)]
 pub struct SpawnerState<'a> {

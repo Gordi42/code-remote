@@ -1,4 +1,4 @@
-use crate::cluster::Cluster;
+use crate::backend::cluster::Cluster;
 use ssh2::Session;
 use std::{io::Read, process::Command};
 use regex::Regex;

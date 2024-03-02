@@ -1,4 +1,5 @@
-use crate::cluster;
+use crate::cluster::Cluster;
+use crate::spawner_state::SpawnerState;
 use crate::toml_list::TomlList;
 use color_eyre::eyre::Result;
 use serde::{Serialize, Deserialize};
@@ -6,8 +7,8 @@ use serde::{Serialize, Deserialize};
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct ClusterState {
     counter: u32,
-    cluster_list: TomlList<cluster::Cluster>,
-    _new_cluster: cluster::Cluster,
+    cluster_list: TomlList<Cluster>,
+    _new_cluster: Cluster,
 }
 
 impl ClusterState {
@@ -15,19 +16,19 @@ impl ClusterState {
     //             CONSTRUCTORS
     // =======================================================================
     pub fn new_empty() -> Result<ClusterState> {
-        let loaded_list: TomlList<cluster::Cluster> = TomlList::new();
+        let cluster_list: TomlList<Cluster> = TomlList::new();
         Ok(ClusterState {
             counter: 0,
-            cluster_list: loaded_list,
-            _new_cluster: cluster::Cluster::new_empty(),
+            cluster_list: cluster_list,
+            _new_cluster: Cluster::new_empty(),
         })
     }
     pub fn new_load() -> Result<ClusterState> {
-        let loaded_list: TomlList<cluster::Cluster> = TomlList::load("clusters")?;
+        let cluster_list: TomlList<Cluster> = TomlList::load("clusters")?;
         Ok(ClusterState {
             counter: 0,
-            cluster_list: loaded_list,
-            _new_cluster: cluster::Cluster::new_empty(),
+            cluster_list: cluster_list,
+            _new_cluster: Cluster::new_empty(),
         })
     }
 
@@ -35,16 +36,21 @@ impl ClusterState {
     //  GETTERS AND SETTERS
     // =======================================================================
 
-    pub fn add_cluster(&mut self, cluster: cluster::Cluster) {
+    pub fn add_cluster(&mut self, cluster: Cluster) {
         self.cluster_list.push(cluster);
     }
 
-    pub fn get_cluster(&self) -> Result<&cluster::Cluster> {
+    pub fn get_cluster(&self) -> Result<&Cluster> {
         let index = self.counter as usize;
         if self.is_new_cluster() {
             return Ok(&self._new_cluster);
         }
         self.cluster_list.get(index)
+    }
+
+    pub fn get_spawner_state(&self) -> Result<SpawnerState> {
+        let cluster = self.get_cluster()?;
+        SpawnerState::new_load(cluster)
     }
 
     // =======================================================================
@@ -70,7 +76,7 @@ impl ClusterState {
     }
 
     pub fn load_cluster_list(&mut self) -> Result<()> {
-        let loaded_list: TomlList<cluster::Cluster> = TomlList::load("clusters")?;
+        let loaded_list: TomlList<Cluster> = TomlList::load("clusters")?;
         self.cluster_list = loaded_list;
         Ok(())
     }
@@ -104,9 +110,10 @@ mod tests {
 
     fn create_dummy_cluster_state() -> Result<ClusterState> {
         let mut cluster_state = ClusterState::new_empty()?;
-        let cluster = cluster::Cluster::new("cluster1", "host1", "user1", "identity_file1");
+        let cluster = Cluster::new(
+            "levante", "levante.dkrz.de", "u301533", "/home/silvano/.ssh/levante_key");
         cluster_state.add_cluster(cluster);
-        let cluster = cluster::Cluster::new("cluster2", "host2", "user2", "identity_file2");
+        let cluster = Cluster::new("cluster2", "host2", "user2", "identity_file2");
         cluster_state.add_cluster(cluster);
         Ok(cluster_state)
     }
@@ -128,7 +135,7 @@ mod tests {
         let mut cluster_state = ClusterState::new_empty().unwrap();
         cluster_state.load_cluster_list().unwrap();
         assert_eq!(cluster_state.cluster_list.len(), 2);
-        assert_eq!(cluster_state.get_cluster().unwrap().name, "cluster1");
+        assert_eq!(cluster_state.get_cluster().unwrap().name, "levante");
         cluster_state.next();
         assert_eq!(cluster_state.get_cluster().unwrap().name, "cluster2");
     }

@@ -3,12 +3,14 @@ use ssh2::Session;
 use std::{io::Read, process::Command};
 use regex::Regex;
 use color_eyre::eyre::Result;
+use serde::{Serialize, Deserialize};
 
 const NODE_NAME_REGEX: &str = r"l\d{5}";
 
-pub struct Spawner<'a> {
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct Spawner {
     pub preset_name: String,
-    pub cluster: &'a Cluster,
+    // pub cluster: &'a Cluster,
     pub account: String,
     pub partition: String,
     pub time: String,
@@ -16,14 +18,14 @@ pub struct Spawner<'a> {
     pub other_options: String,
 }
 
-impl Spawner<'_> {
+impl Spawner {
     // =======================================================================
     //             CONSTRUCTORS
     // =======================================================================
-    pub fn new(cluster: &Cluster) -> Spawner {
+    pub fn new() -> Spawner {
         Spawner {
             preset_name: String::from("new"),
-            cluster: cluster,
+            // cluster: cluster,
             account: String::from(""),
             partition: String::from(""),
             time: String::from(""),
@@ -35,20 +37,20 @@ impl Spawner<'_> {
     // =======================================================================
     //             MAIN FUNCTIONS
     // =======================================================================
-    
-    pub fn spawn(&self, session: &mut Session) -> Result<()> {
+
+    pub fn spawn(&self, session: &mut Session, cluster: &Cluster) -> Result<()> {
         // get the node name
         let mut node_name = self.get_node_name(session)?;
         // if the node name is not found, spawn the job
         if node_name.is_none() {
-            self.salloc(session)?;
+            self.salloc(session, cluster)?;
             node_name = self.get_node_name(session)?;
         }
         let node_name = node_name.unwrap(); 
-        let node_alias = format!("{}-{}", self.cluster.name, node_name);
+        let node_alias = format!("{}-{}", cluster.name, node_name);
         // append teh node name to the ssh config file
-        let config_entry = self.format_config_entry(&node_name);
-        self.cluster.append_ssh_config(&config_entry)?;
+        let config_entry = self.format_config_entry(&node_name, cluster);
+        cluster.append_ssh_config(&config_entry)?;
 
         // clear the node from the known hosts file
         self.clear_known_host(&node_alias)?;
@@ -107,15 +109,15 @@ impl Spawner<'_> {
     //            FILE OPERATIONS
     // =======================================================================
 
-    pub fn format_config_entry(&self, node_name: &str) -> String {
-        let host = format!("{}-{}", self.cluster.name, node_name);
+    pub fn format_config_entry(&self, node_name: &str, cluster: &Cluster) -> String {
+        let host = format!("{}-{}", cluster.name, node_name);
         format!(
             "Host {}\n    HostName {}\n    User {}\n    IdentityFile {}\n    ProxyJump {}",
             host, 
             node_name, 
-            self.cluster.user, 
-            self.cluster.identity_file, 
-            self.cluster.name)
+            cluster.user, 
+            cluster.identity_file, 
+            cluster.name)
     }
 
     pub fn clear_known_host(&self, node_alias: &str) -> Result<()> {
@@ -155,9 +157,9 @@ impl Spawner<'_> {
 
     }
 
-    pub fn salloc(&self, session: &mut Session) -> Result<()> {
+    pub fn salloc(&self, session: &mut Session, cluster: &Cluster) -> Result<()> {
         let command = self.get_spawn_command();
-        Ok(self.cluster.execute_and_forward(session, &command)?)
+        Ok(cluster.execute_and_forward(session, &command)?)
     }
 
 }

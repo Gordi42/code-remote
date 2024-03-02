@@ -1,7 +1,8 @@
 use crate::cluster;
 use color_eyre::eyre;
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct ClusterState {
     counter: u32,
     cluster_list: Vec<cluster::Cluster>,
@@ -41,31 +42,37 @@ impl ClusterState {
         self.counter == self.cluster_list.len() as u32
     }
 
+    // pub fn save_cluster_list(&self) -> eyre::Result<()> {
+    //     let home = std::env::var("HOME")?;
+    //     let config_dir = format!("{}/.config/code-remote", home);
+    //     std::fs::create_dir_all(&config_dir)?;
+    //     let file = format!("{}/clusters.json", config_dir);
+    //     let mut clusters = Vec::new();
+    //     for cluster in &self.cluster_list {
+    //         let cluster_json = serde_json::to_string(cluster)?;
+    //         clusters.push(cluster_json);
+    //     }
+    //     let clusters_json = serde_json::to_string(&clusters)?;
+    //     std::fs::write(file, clusters_json)?;
+    //     Ok(())
+    // }
+
     pub fn save_cluster_list(&self) -> eyre::Result<()> {
         let home = std::env::var("HOME")?;
         let config_dir = format!("{}/.config/code-remote", home);
         std::fs::create_dir_all(&config_dir)?;
-        let file = format!("{}/clusters.json", config_dir);
-        let mut clusters = Vec::new();
-        for cluster in &self.cluster_list {
-            let cluster_json = serde_json::to_string(cluster)?;
-            clusters.push(cluster_json);
-        }
-        let clusters_json = serde_json::to_string(&clusters)?;
-        std::fs::write(file, clusters_json)?;
+        let file = format!("{}/clusters.toml", config_dir);
+        let toml_str = toml::to_string(&self)?;
+        std::fs::write(file, toml_str)?;
         Ok(())
     }
 
-    pub fn load_cluster_list(&mut self) -> eyre::Result<()> {
+    pub fn load_cluster_list() -> eyre::Result<ClusterState> {
         let home = std::env::var("HOME")?;
-        let file = format!("{}/.config/code-remote/clusters.json", home);
-        let clusters_json = std::fs::read_to_string(file)?;
-        let clusters: Vec<String> = serde_json::from_str(&clusters_json)?;
-        for cluster_json in clusters {
-            let cluster: cluster::Cluster = serde_json::from_str(&cluster_json)?;
-            self.add_cluster(cluster);
-        }
-        Ok(())
+        let file = format!("{}/.config/code-remote/clusters.toml", home);
+        let toml_str = std::fs::read_to_string(file)?;
+        let cluster_state: ClusterState = toml::from_str(&toml_str)?;
+        Ok(cluster_state)
     }
 
     pub fn next(&mut self) {
@@ -105,7 +112,7 @@ mod tests {
         let cluster_state = create_dummy_cluster_state();
         cluster_state.save_cluster_list().unwrap();
         let home = std::env::var("HOME").unwrap();
-        let file = format!("{}/.config/code-remote/clusters.json", home);
+        let file = format!("{}/.config/code-remote/clusters.toml", home);
         assert!(std::path::Path::new(&file).exists());
     }
 
@@ -114,8 +121,7 @@ mod tests {
         let dummy_cluster_state = create_dummy_cluster_state();
         dummy_cluster_state.save_cluster_list().unwrap();
 
-        let mut cluster_state = ClusterState::new();
-        cluster_state.load_cluster_list().unwrap();
+        let mut cluster_state = ClusterState::load_cluster_list().unwrap();
         assert_eq!(cluster_state.cluster_list.len(), 2);
         assert_eq!(cluster_state.get_cluster().unwrap().name, "cluster1");
         cluster_state.next();

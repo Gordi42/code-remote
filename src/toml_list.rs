@@ -1,4 +1,3 @@
-use crate::cluster;
 use color_eyre::eyre;
 use serde::{Serialize, Deserialize};
 
@@ -8,11 +7,18 @@ pub struct TomlList<T> {
 }
 
 impl<T: Serialize> TomlList<T> {
+    // =======================================================================
+    //             CONSTRUCTORS
+    // =======================================================================
     pub fn new() -> TomlList<T> {
         TomlList {
             entry: Vec::new(),
         }
     }
+
+    // =======================================================================
+    //   MAIN METHODS
+    // =======================================================================
 
     pub fn push(&mut self, item: T) {
         self.entry.push(item);
@@ -27,6 +33,10 @@ impl<T: Serialize> TomlList<T> {
     pub fn len(&self) -> usize {
         self.entry.len()
     }
+
+    // =======================================================================
+    //            FILE OPERATIONS
+    // =======================================================================
 
     pub fn save(&self, filename: &str) -> eyre::Result<()> {
         let home = std::env::var("HOME")?;
@@ -58,6 +68,7 @@ impl<T: Serialize> TomlList<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cluster;
 
     #[test]
     fn test_new() {

@@ -54,6 +54,13 @@ impl ClusterState {
         SpawnerState::new_load(cluster)
     }
 
+    pub fn get_cluster_names(&self) -> Vec<String> {
+        let mut clust_list: Vec<String> = self.cluster_list.entry
+            .iter().map(|c| c.name.clone()).collect();
+        clust_list.push("Create New".to_string());
+        clust_list
+    }
+
     // =======================================================================
     //  CHECKERS
     // =======================================================================

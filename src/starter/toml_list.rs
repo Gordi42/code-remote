@@ -3,7 +3,7 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Default)]
 pub struct TomlList<T> {
-    entry: Vec<T>,
+    pub entry: Vec<T>,
 }
 
 impl<T: Serialize> TomlList<T> {

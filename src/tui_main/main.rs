@@ -1,20 +1,32 @@
-use color_eyre::eyre::Result;
+// ANCHOR: imports_main
+// ANCHOR: declare_mods
+/// Application.
+pub mod app;
+
+/// Terminal events handler.
+pub mod event;
+
+/// Widget renderer.
+pub mod ui;
+
+/// Terminal user interface.
+pub mod tui;
+
+/// Application updater.
+pub mod update;
+// ANCHOR_END: declare_mods
+use app::App;
+use color_eyre::Result;
+use event::{Event, EventHandler};
 use ratatui::{backend::CrosstermBackend, Terminal};
+use tui::Tui;
+use update::update;
+// ANCHOR_END: imports_main
 
-use tui_main::{
-    app::App,
-    event::{Event, EventHandler},
-    tui::Tui,
-    update::update};
-
-pub mod starter;
-pub mod tui_main;
-
-
-
+// ANCHOR: main
 fn main() -> Result<()> {
     // Create an application.
-    let mut app = App::new()?;
+    let mut app = App::new();
 
     // Initialize the terminal user interface.
     let backend = CrosstermBackend::new(std::io::stderr());
@@ -38,7 +50,6 @@ fn main() -> Result<()> {
 
     // Exit the user interface.
     tui.exit()?;
-
     Ok(())
 }
-
+// ANCHOR_END: main

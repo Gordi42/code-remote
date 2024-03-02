@@ -1,7 +1,7 @@
 use color_eyre::eyre;
 use serde::{Serialize, Deserialize};
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Default)]
 pub struct TomlList<T> {
     entry: Vec<T>,
 }

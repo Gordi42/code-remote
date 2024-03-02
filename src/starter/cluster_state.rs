@@ -1,13 +1,13 @@
-use crate::backend::{
+use crate::starter::{
     cluster::Cluster,
     spawner_state::SpawnerState,
     toml_list::TomlList};
 use color_eyre::eyre::Result;
 use serde::{Serialize, Deserialize};
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Default)]
 pub struct ClusterState {
-    counter: u32,
+    pub counter: u32,
     cluster_list: TomlList<Cluster>,
     _new_cluster: Cluster,
 }

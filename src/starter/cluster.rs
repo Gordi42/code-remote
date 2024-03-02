@@ -39,7 +39,7 @@ impl std::fmt::Display for ClusterError {
 //            CLUSTER STRUCT
 // =======================================================================
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Default)]
 pub struct Cluster {
     pub name: String,
     pub host: String,

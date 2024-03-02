@@ -1,9 +1,7 @@
 use crate::cluster::Cluster;
 use ssh2::Session;
-use std::io::Read;
-use std::io;
+use std::{io::Read, process::Command};
 use regex::Regex;
-use std::process::Command;
 use color_eyre::eyre::Result;
 
 const NODE_NAME_REGEX: &str = r"l\d{5}";
@@ -157,24 +155,9 @@ impl Spawner<'_> {
 
     }
 
-    pub fn execute_and_forward(&self, session: &Session, command: &str) -> Result<()>{
-        let mut channel = session.channel_session()?;
-        channel.exec(command)?;
-
-        println!("{}", command);
-
-        let mut ssh_stderr = channel.stderr();
-        let stderr = io::stderr();
-        let mut stderr = stderr.lock();
-        io::copy(&mut ssh_stderr, &mut stderr)?;
-
-        channel.wait_close()?;
-        Ok(())
-    }
-
     pub fn salloc(&self, session: &mut Session) -> Result<()> {
         let command = self.get_spawn_command();
-        Ok(self.execute_and_forward(session, &command)?)
+        Ok(self.cluster.execute_and_forward(session, &command)?)
     }
 
 }

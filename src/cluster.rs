@@ -1,10 +1,10 @@
-use std::path::Path;
-use std::fs::File;
-use std::io::Read;
-use std::fs::OpenOptions;
+use std::{
+    path::Path,
+    fs::{File, OpenOptions},
+    net::TcpStream,
+    io::{self, Read, prelude::*} 
+};
 use ssh2::{Session, Channel};
-use std::net::TcpStream;
-use std::io::prelude::*;
 use serde::{Serialize, Deserialize};
 use color_eyre::{eyre::eyre, Result};
 
@@ -188,6 +188,22 @@ impl Cluster {
     pub fn create_channel(&self) -> Result<Channel> {
         let sess = self.create_session()?;
         Ok(sess.channel_session()?)
+    }
+
+    /// Execute a command and forward the output to the terminal
+    pub fn execute_and_forward(&self, session: &Session, command: &str) -> Result<()>{
+        let mut channel = session.channel_session()?;
+        channel.exec(command)?;
+
+        println!("{}", command);
+
+        let mut ssh_stderr = channel.stderr();
+        let stderr = io::stderr();
+        let mut stderr = stderr.lock();
+        io::copy(&mut ssh_stderr, &mut stderr)?;
+
+        channel.wait_close()?;
+        Ok(())
     }
 
 }

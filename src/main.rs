@@ -22,7 +22,7 @@ fn main() -> Result<()> {
     spawn.preset_name = String::from("test_very_long_name_for_a_job");
     spawn.account = String::from("uo0780");
     spawn.partition = String::from("compute");
-    spawn.time = String::from("01:00:00");
+    spawn.time = String::from("00:05:00");
     spawn.working_directory = String::from("/work/uo0780/u301533/FRIDOM/");
 
 

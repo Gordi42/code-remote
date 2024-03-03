@@ -4,7 +4,6 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, Paragraph},
 };
 use ratatui::{prelude::*, widgets::*, layout::Flex};
-
 use crate::tui_main::app::{App, Focus, Menu, InputMode};
 
 pub fn render(app: &mut App, f: &mut Frame) {
@@ -39,16 +38,7 @@ pub fn render(app: &mut App, f: &mut Frame) {
 
     match app.menu {
         Menu::Cluster => {
-            if app.cluster_state.is_new_cluster() {
-                render_create_new_dialog(f, &layout[1]);
-            }
-            else {
-                // Render the right section.
-                render_cluster_info(app, f, &layout[1]);
-            }
-
-            // Render the left section.
-            render_cluster_list(app, f, &layout[0]);
+            render_cluster_menu(app, f, &outer_layout[0]);
         }
         Menu::Spawner => {
             // Render the right section.
@@ -70,24 +60,44 @@ pub fn render(app: &mut App, f: &mut Frame) {
 
 }
 
+// =======================================================================
+//  UI Helper Functions
+// =======================================================================
 
-pub fn render_cluster_list(app: &mut App, f: &mut Frame, area: &Rect) {
-    // select the border color based on the focus
-    let border_color = match app.focus {
-        Focus::List => Color::Blue,
-        _ => Color::White,};
-    // create a list with the cluster names
+/// Render the borders of a widget and return the area inside the borders.
+pub fn render_border(f: &mut Frame, area: &Rect, title: &str,
+                     is_focused: bool) -> Rect {
+    let mut block = Block::default().title(title).borders(Borders::ALL)
+        .border_type(BorderType::Rounded);
+    if is_focused {
+        block = block.fg(Color::Blue);
+    }
+    // add a <tab> to the title if the widget is not focused
+    let block = match is_focused {
+        true => block,
+        false => block.title(block::Title::from("<tab>")
+                            .alignment(Alignment::Right)),
+    };
+    f.render_widget(block.clone(), *area);
+    block.inner(*area)
+}
+
+pub fn render_list(f: &mut Frame, area: &Rect, items: Vec<String>,
+                   enable_highlight: bool, counter: usize, 
+                   highlight_symbol: &str) {
+    let highlight_style = match enable_highlight {
+        true => Style::default().add_modifier(Modifier::BOLD)
+            .bg(Color::Blue).fg(Color::Black),
+        false => Style::default(),
+    };
+    // create the list state
     let mut state = ListState::default();
-    let counter: usize = app.cluster_state.counter as usize;
     state.select(Some(counter));
-    let items = app.cluster_state.get_cluster_names();
+    // create the list
     let list = List::new(items)
-        .block(Block::default().title("Clusters:").borders(Borders::ALL)
-        .border_type(BorderType::Rounded).fg(border_color))
-        .style(Style::default().fg(Color::White))
-        .highlight_style(Style::default().add_modifier(Modifier::BOLD)
-                         .bg(Color::Blue).fg(Color::Black))
-        .highlight_symbol(" > ")
+        .style(Style::default())
+        .highlight_style(highlight_style)
+        .highlight_symbol(highlight_symbol)
         .repeat_highlight_symbol(true)
         .direction(ListDirection::TopToBottom);
 
@@ -95,94 +105,105 @@ pub fn render_cluster_list(app: &mut App, f: &mut Frame, area: &Rect) {
     f.render_stateful_widget(list, *area, &mut state);
 }
 
-pub fn render_spawner_list(app: &mut App, f: &mut Frame, area: &Rect) {
-    // select the border color based on the focus
-    let border_color = match app.focus {
-        Focus::List => Color::Blue,
-        _ => Color::White,};
-    // create a list with the cluster names
-    let mut state = ListState::default();
-    let counter = app.spawner_state.as_ref().map_or(0, |state| state.counter as usize);
-    state.select(Some(counter));
-    let items = app.spawner_state.as_ref().map_or(
-        vec!["No spawners".to_string()],
-        |state| state.get_spawner_names());
-    let list = List::new(items)
-        .block(Block::default().title("Spawners:").borders(Borders::ALL)
-        .border_type(BorderType::Rounded).fg(border_color))
-        .style(Style::default().fg(Color::White))
-        .highlight_style(Style::default().add_modifier(Modifier::BOLD)
-                         .bg(Color::Blue).fg(Color::Black))
-        .highlight_symbol(" > ")
-        .repeat_highlight_symbol(true)
-        .direction(ListDirection::TopToBottom);
+pub fn horizontal_split(area: &Rect, percentage: u16) -> Vec<Rect> {
+    let layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(
+            [
+                Constraint::Percentage(percentage),
+                Constraint::Percentage(100 - percentage),
+            ]
+            .as_ref(),
+        )
+        .split(*area);
+    layout.to_vec()
+}
 
-    // render the list
-    f.render_stateful_widget(list, *area, &mut state);
+pub fn horizontal_split_fixed(area: &Rect, fixed: u16) -> Vec<Rect> {
+    let layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(
+            [
+                Constraint::Length(fixed),
+                Constraint::Min(0),
+            ]
+            .as_ref(),
+        )
+        .split(*area);
+    layout.to_vec()
+}
+
+// =======================================================================
+//  Render Cluster Menu
+// =======================================================================
+
+pub fn render_cluster_menu(app: &mut App, f: &mut Frame, area: &Rect) {
+    let layout = horizontal_split(area, 30);
+    // Render the list section.
+    render_cluster_list(app, f, &layout[0]);
+
+    // Render the info section.
+    if app.cluster_state.is_new_cluster() {
+        render_create_new_dialog(f, &layout[1]);
+    } else {
+        render_cluster_info(app, f, &layout[1]);
+    }
+}
+
+pub fn render_cluster_list(app: &mut App, f: &mut Frame, area: &Rect) {
+    let inner_area = render_border(
+        f, area, "Clusters: ", app.focus == Focus::List);
+    // create a list with the cluster names
+    render_list(f, &inner_area, 
+                app.cluster_state.get_cluster_names(), true, 
+                app.cluster_state.counter as usize, " > ");
 }
 
 pub fn render_cluster_info(app: &mut App, f: &mut Frame, area: &Rect) {
-    // Draw a border around the area.
-    let mut border = Block::default()
-        .title("Info: ").borders(Borders::ALL)
-        .border_type(BorderType::Rounded);
-        
-    // modify the border based on the focus
-    border = match app.focus {
-        Focus::List => {
-            border
-                .title(block::Title::from("<tab> to toggle")
-                       .alignment(Alignment::Right))}
-        Focus::Info => {
-            border.fg(Color::Blue)
-        }
-    };
+    let inner_area = render_border(
+        f, area, "Info: ", app.focus == Focus::Info);
 
     // create a layout for the inner area
-    let layout = Layout::default().
-        direction(Direction::Horizontal).constraints(
-            [Constraint::Length(15),Constraint::Min(8)].as_ref())
-        .split(border.inner(*area));
+    let layout = horizontal_split_fixed(&inner_area, 15);
 
-
-    let highlight_style = match app.focus {
-        Focus::Info => Style::default().add_modifier(Modifier::BOLD)
-                                       .bg(Color::Blue).fg(Color::Black),
-        _           => Style::default().fg(Color::White),};
-
-    let mut state = ListState::default();
-    state.select(Some(app.cluster_state.info_counter as usize));
+    let enable_highlight = app.focus == Focus::Info;
 
     let cluster = app.cluster_state.get_cluster().unwrap();
 
-    let entry_names = vec!["Name: ", "Host: ", "User: ", "IdentityFile: "];
-    let entry_values = vec![
-        cluster.name.clone(),
-        cluster.host.clone(),
-        cluster.user.clone(),
-        cluster.identity_file.clone(),
-    ];
-
-    let entry_names = List::new(entry_names)
-        .style(Style::default().fg(Color::White))
-        .highlight_style(highlight_style)
-        .highlight_symbol(" ")
-        .repeat_highlight_symbol(true)
-        .direction(ListDirection::TopToBottom);
-
-    let entry_values = List::new(entry_values)
-        .style(Style::default().fg(Color::White))
-        .highlight_style(highlight_style)
-        .highlight_symbol(" ")
-        .repeat_highlight_symbol(true)
-        .direction(ListDirection::TopToBottom);
-
-    // render the list
-    f.render_widget(border, *area);
-    f.render_stateful_widget(entry_names, layout[0], &mut state);
-    f.render_stateful_widget(entry_values, layout[1], &mut state);
+    render_list(f, &layout[0], cluster.get_entry_names(), enable_highlight, 
+                app.cluster_state.info_counter as usize, "  ");
+    render_list(f, &layout[1], cluster.get_entry_values(), enable_highlight, 
+                app.cluster_state.info_counter as usize, "  ");
 
 }
+
+// =======================================================================
+//  Render Spawner Menu
+// =======================================================================
+
+pub fn render_spawner_menu(app: &mut App, f: &mut Frame, area: &Rect) {
+    let layout = horizontal_split(area, 30);
+    // Render the list section.
+    render_spawner_list(app, f, &layout[0]);
+
+    // Render the info section.
+    // let spawner_state = app.spawner_state.as_ref().unwrap();
+    // if spawner_state.is_new_option() {
+    //     render_create_new_dialog(f, &layout[1]);
+    // } else {
+    //     render_spawner_info(app, f, &layout[1]);
+    // }
+}
+
+pub fn render_spawner_list(app: &mut App, f: &mut Frame, area: &Rect) {
+    let inner_area = render_border(
+        f, area, "Spawners: ", app.focus == Focus::List);
+    let spawner_state = app.spawner_state.as_ref().unwrap();
+    // create a list with the spawner names
+    render_list(f, &inner_area, spawner_state.get_spawner_names(),
+                true, spawner_state.counter as usize, " > ");
+}
+
 
 pub fn render_spawner_info(app: &mut App, f: &mut Frame, area: &Rect) {
     // select the border color based on the focus

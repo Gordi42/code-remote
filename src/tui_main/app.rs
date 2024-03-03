@@ -20,7 +20,7 @@ pub enum Action {
     None,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq)]
 pub enum Focus {
     #[default]
     List,

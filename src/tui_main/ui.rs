@@ -27,24 +27,12 @@ pub fn render(app: &mut App, f: &mut Frame) {
         outer_layout[1],
     );
 
-    // Create a layout for the frame with two vertical sections.
-    let layout = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints(vec![
-                     Constraint::Percentage(30),
-                     Constraint::Percentage(70),
-        ])
-        .split(outer_layout[0]);
-
     match app.menu {
         Menu::Cluster => {
             render_cluster_menu(app, f, &outer_layout[0]);
         }
         Menu::Spawner => {
-            // Render the right section.
-            render_spawner_info(app, f, &layout[1]);
-            // Render the right section.
-            render_spawner_list(app, f, &layout[0]);
+            render_spawner_menu(app, f, &outer_layout[0]);
         }
     }
 
@@ -143,7 +131,7 @@ pub fn render_cluster_menu(app: &mut App, f: &mut Frame, area: &Rect) {
     render_cluster_list(app, f, &layout[0]);
 
     // Render the info section.
-    if app.cluster_state.is_new_cluster() {
+    if app.cluster_state.is_new_entry() {
         render_create_new_dialog(f, &layout[1]);
     } else {
         render_cluster_info(app, f, &layout[1]);
@@ -153,10 +141,11 @@ pub fn render_cluster_menu(app: &mut App, f: &mut Frame, area: &Rect) {
 pub fn render_cluster_list(app: &mut App, f: &mut Frame, area: &Rect) {
     let inner_area = render_border(
         f, area, "Clusters: ", app.focus == Focus::List);
+    let index = app.cluster_state.list_counter.get_value();
     // create a list with the cluster names
     render_list(f, &inner_area, 
-                app.cluster_state.get_cluster_names(), true, 
-                app.cluster_state.counter as usize, " > ");
+                app.cluster_state.get_entry_names(), true, 
+                index as usize, " > ");
 }
 
 pub fn render_cluster_info(app: &mut App, f: &mut Frame, area: &Rect) {
@@ -168,12 +157,12 @@ pub fn render_cluster_info(app: &mut App, f: &mut Frame, area: &Rect) {
 
     let enable_highlight = app.focus == Focus::Info;
 
-    let cluster = app.cluster_state.get_cluster().unwrap();
+    let cluster = app.cluster_state.get_entry().unwrap();
 
     render_list(f, &layout[0], cluster.get_entry_names(), enable_highlight, 
-                app.cluster_state.info_counter as usize, "  ");
+                app.cluster_state.info_counter.get_value() as usize, "  ");
     render_list(f, &layout[1], cluster.get_entry_values(), enable_highlight, 
-                app.cluster_state.info_counter as usize, "  ");
+                app.cluster_state.info_counter.get_value() as usize, "  ");
 
 }
 
@@ -187,48 +176,42 @@ pub fn render_spawner_menu(app: &mut App, f: &mut Frame, area: &Rect) {
     render_spawner_list(app, f, &layout[0]);
 
     // Render the info section.
-    // let spawner_state = app.spawner_state.as_ref().unwrap();
-    // if spawner_state.is_new_option() {
-    //     render_create_new_dialog(f, &layout[1]);
-    // } else {
-    //     render_spawner_info(app, f, &layout[1]);
-    // }
+    let spawner_state = app.spawner_state.as_ref().unwrap();
+    if spawner_state.is_new_entry() {
+        render_create_new_dialog(f, &layout[1]);
+    } else {
+        render_spawner_info(app, f, &layout[1]);
+    }
 }
 
 pub fn render_spawner_list(app: &mut App, f: &mut Frame, area: &Rect) {
     let inner_area = render_border(
         f, area, "Spawners: ", app.focus == Focus::List);
     let spawner_state = app.spawner_state.as_ref().unwrap();
+    let index = spawner_state.list_counter.get_value();
     // create a list with the spawner names
-    render_list(f, &inner_area, spawner_state.get_spawner_names(),
-                true, spawner_state.counter as usize, " > ");
+    render_list(f, &inner_area, spawner_state.get_entry_names(),
+                true, index as usize, " > ");
 }
 
 
 pub fn render_spawner_info(app: &mut App, f: &mut Frame, area: &Rect) {
-    // select the border color based on the focus
-    let border_color = match app.focus {
-        Focus::Info => Color::Blue,
-        _ => Color::White,};
+    let inner_area = render_border(
+        f, area, "Info: ", app.focus == Focus::Info);
 
-    let spawner = app.spawner_state.as_ref().unwrap().get_spawner().unwrap();
-    let text = format!(
-        "Preset Name: {}\n\
-        Account: {}\n\
-        Partition: {}\n\
-        Time: {}\n\
-        Workdir: {}\n\
-        Other: {}
-        ",
-        spawner.preset_name, spawner.account, spawner.partition,
-        spawner.time, spawner.working_directory, spawner.other_options);
-    f.render_widget(
-        Paragraph::new(text)
-            .block(Block::default().title("Info:").borders(Borders::ALL)
-            .border_type(BorderType::Rounded).fg(border_color))
-            .style(Style::default().fg(Color::White))
-            .alignment(Alignment::Left),
-        *area);
+    // create a layout for the inner area
+    let layout = horizontal_split_fixed(&inner_area, 15);
+
+    let enable_highlight = app.focus == Focus::Info;
+
+    let spawner_state = app.spawner_state.as_ref().unwrap();
+    let spawner = spawner_state.get_entry().unwrap();
+
+    render_list(f, &layout[0], spawner.get_entry_names(), enable_highlight, 
+                spawner_state.info_counter.get_value() as usize, "  ");
+    render_list(f, &layout[1], spawner.get_entry_values(), enable_highlight, 
+                spawner_state.info_counter.get_value() as usize, "  ");
+
 }
 
 pub fn render_text_area(app: &mut App, f: &mut Frame) {

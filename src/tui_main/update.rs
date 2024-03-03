@@ -18,24 +18,29 @@ pub fn normal_mode(app: &mut App, key_event: KeyEvent) {
                 app.quit()
             }
         }
-        KeyCode::Down | KeyCode::Char('j') => app.increment_counter(),
-        KeyCode::Up | KeyCode::Char('k') => app.decrement_counter(),
         KeyCode::Char('i') => app.toggle_editing(),
-        KeyCode::Right | KeyCode::Char('l') => app.pressed_right(),
-        KeyCode::Left | KeyCode::Char('h') => app.pressed_left(),
         KeyCode::Tab => app.toggle_focus(),
         KeyCode::Char('d') => app.open_remove_mode(),
         _ => {}
     };
-    // check what happens if enter is pressed
-    match key_event.code {
-        KeyCode::Enter => {
-            match app.focus {
-                Focus::List => app.pressed_right(),
-                Focus::Info => app.toggle_editing(),
-            }
+    match app.focus {
+        Focus::List => match key_event.code {
+            KeyCode::Right | KeyCode::Char('l') | KeyCode::Enter
+                => app.pressed_right(),
+            KeyCode::Left | KeyCode::Char('h') => app.pressed_left(),
+            KeyCode::Down | KeyCode::Char('j') => app.increment_counter(),
+            KeyCode::Up | KeyCode::Char('k') => app.decrement_counter(),
+            _ => {}
         }
-        _ => {}
+        Focus::Info => match key_event.code {
+            KeyCode::Down | KeyCode::Char('j') 
+                => app.increment_info_counter(),
+            KeyCode::Up | KeyCode::Char('k') 
+                => app.decrement_info_counter(),
+            KeyCode::Enter
+                => app.toggle_editing(),
+            _ => {}
+        }
     };
 }
 

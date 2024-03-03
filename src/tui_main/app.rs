@@ -12,8 +12,6 @@ use std::io;
 
 pub enum Action {
     Tick,
-    Increment,
-    Decrement,
     EnterInfo,
     EnterList,
     Quit,
@@ -67,13 +65,38 @@ impl App<'_> {
         self.should_quit = true;
     }
 
+    pub fn increment_info_counter(&mut self) {
+        match self.menu {
+            Menu::Cluster => {
+                self.cluster_state.info_counter.increment();
+            }
+            Menu::Spawner => {
+                let spawner_state = self.spawner_state.as_mut().unwrap();
+                spawner_state.info_counter.increment();
+            }
+        }
+    }
+
+    pub fn decrement_info_counter(&mut self) {
+        match self.menu {
+            Menu::Cluster => {
+                self.cluster_state.info_counter.decrement();
+            }
+            Menu::Spawner => {
+                let spawner_state = self.spawner_state.as_mut().unwrap();
+                spawner_state.info_counter.decrement();
+            }
+        }
+    }
+
     pub fn increment_counter(&mut self) {
         match self.menu {
             Menu::Cluster => {
-                self.cluster_state.increment_counter(&self.focus);
+                self.cluster_state.list_counter.increment();
             }
             Menu::Spawner => {
-                self.spawner_state.as_mut().unwrap().next();
+                let spawner_state = self.spawner_state.as_mut().unwrap();
+                spawner_state.list_counter.increment();
             }
         }
     }
@@ -81,10 +104,12 @@ impl App<'_> {
     pub fn decrement_counter(&mut self) {
         match self.menu {
             Menu::Cluster => {
-                self.cluster_state.decrement_counter(&self.focus);
+                // self.cluster_state.decrement_counter();
+                self.cluster_state.list_counter.decrement();
             }
             Menu::Spawner => {
-                self.spawner_state.as_mut().unwrap().previous();
+                let spawner_state = self.spawner_state.as_mut().unwrap();
+                spawner_state.list_counter.decrement();
             }
         }
     }
@@ -92,8 +117,8 @@ impl App<'_> {
     pub fn toggle_focus(&mut self) {
         match self.focus {
             Focus::List => { 
-                if self.cluster_state.is_new_cluster() {
-                    self.cluster_state.add_new_cluster();
+                if self.cluster_state.is_new_entry() {
+                    self.cluster_state.add_new_entry();
                 }
                 self.focus = Focus::Info; }
             Focus::Info => { self.focus = Focus::List; }
@@ -108,8 +133,13 @@ impl App<'_> {
         };
         match self.input_mode {
             InputMode::Normal => { 
-                let buffer = self.cluster_state.get_input_buffer();
-                self.input_buffer = buffer.to_string();
+                let buffer = match self.menu {
+                    Menu::Cluster => 
+                        self.cluster_state.get_input_buffer(),
+                    Menu::Spawner => 
+                        self.spawner_state.as_ref()
+                            .unwrap().get_input_buffer(),
+                };
                 self.text_area = TextArea::from([buffer]);
                 self.input_mode = InputMode::Editing; 
             }
@@ -122,7 +152,16 @@ impl App<'_> {
 
     pub fn save_input_buffer(&mut self) {
         let buffer = self.text_area.lines().join("\n");
-        self.cluster_state.set_input_buffer(&buffer);
+        match self.menu {
+            Menu::Cluster => {
+                self.cluster_state.set_input_buffer(&buffer);
+            }
+            Menu::Spawner => {
+                let cluster = self.cluster_state.get_entry().unwrap();
+                self.spawner_state.as_mut().unwrap()
+                    .set_input_buffer(&buffer, &cluster);
+            }
+        };
         self.toggle_editing();
     }
 
@@ -134,11 +173,15 @@ impl App<'_> {
         match self.menu {
             Menu::Cluster => {
                 self.cluster_state.remove_selected();
-                self.cluster_state.save_cluster_list().unwrap();
+                self.cluster_state.save_entries().unwrap();
                 self.focus = Focus::List;
             }
             Menu::Spawner => {
-                // self.spawner_state.as_mut().unwrap().remove_selected();
+                let spawner_state = self.spawner_state.as_mut().unwrap();
+                spawner_state.remove_selected();
+                let cluster = self.cluster_state.get_entry().unwrap();
+                spawner_state.save_entries(&cluster).unwrap();
+                self.focus = Focus::List;
             }
         };
         self.input_mode = InputMode::Normal;
@@ -147,10 +190,10 @@ impl App<'_> {
     pub fn pressed_right(&mut self) {
         match self.menu {
             Menu::Cluster => {
-                if self.cluster_state.is_new_cluster() {
-                    self.cluster_state.add_new_cluster();
+                if self.cluster_state.is_new_entry() {
+                    self.cluster_state.add_new_entry();
                     self.focus = Focus::Info;
-                    self.cluster_state.info_counter = 0;
+                    self.cluster_state.info_counter.reset();
                     self.toggle_editing();
                 } else {
                     self.spawner_state = Some(
@@ -159,10 +202,24 @@ impl App<'_> {
                 }
             }
             Menu::Spawner => {
-                self.quit();
-                reset().expect("failed to reset the terminal");
-                let cluster = self.cluster_state.get_cluster().unwrap();
-                self.spawner_state.as_ref().unwrap().spawn(&cluster).unwrap();
+                let is_new: bool;
+                {
+                    is_new = self.spawner_state.as_ref().unwrap()
+                        .is_new_entry();
+                }
+                if is_new {
+                    let spawner_state = self.spawner_state.as_mut().unwrap();
+                    spawner_state.add_new_entry();
+                    self.focus = Focus::Info;
+                    spawner_state.info_counter.reset();
+                    self.toggle_editing();
+                } else {
+                    self.quit();
+                    reset().expect("failed to reset the terminal");
+                    let cluster = self.cluster_state.get_entry().unwrap();
+                    let spawner_state = self.spawner_state.as_ref().unwrap();
+                    spawner_state.spawn(&cluster).unwrap();
+                }
             }
         };
     }

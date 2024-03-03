@@ -14,7 +14,6 @@ pub struct ClusterState {
     pub counter: u32,
     pub info_counter: u32,
     cluster_list: TomlList<Cluster>,
-    _new_cluster: Cluster,
 }
 
 impl ClusterState {
@@ -27,7 +26,6 @@ impl ClusterState {
             counter: 0,
             info_counter: 0,
             cluster_list: cluster_list,
-            _new_cluster: Cluster::new_empty(),
         })
     }
     pub fn new_load() -> Result<ClusterState> {
@@ -36,7 +34,6 @@ impl ClusterState {
             counter: 0,
             info_counter: 0,
             cluster_list: cluster_list,
-            _new_cluster: Cluster::new_empty(),
         })
     }
 
@@ -48,20 +45,41 @@ impl ClusterState {
         self.cluster_list.push(cluster);
     }
 
-    pub fn get_cluster(&self) -> Result<&Cluster> {
-        let index = self.counter as usize;
-        if self.is_new_cluster() {
-            return Ok(&self._new_cluster);
+    pub fn add_new_cluster(&mut self) {
+        let mut cluster = Cluster::new_empty();
+        cluster.name = self.check_cluster_name("New Cluster");
+        self.add_cluster(cluster);
+    }
+
+    // Check if a new cluster name is valid. E.g. it is not empty and 
+    // it does not exist in the list of clusters.
+    // If the name is not valid, it returns a modified name:
+    // new name = name + "(i)"  where i is the smallest integer such that
+    // the new name does not exist in the list of clusters.
+    pub fn check_cluster_name(&self, name: &str) -> String {
+        let mut new_name = name.to_string();
+        if new_name.is_empty() {
+            new_name = "New Cluster".to_string();
         }
-        self.cluster_list.get(index)
+        let mut i = 1;
+        while self.cluster_list.entry.iter().any(|c| c.name == new_name) {
+            new_name = format!("{}({})", name, i);
+            i += 1;
+        }
+        new_name
+    }
+
+    pub fn remove_selected(&mut self) {
+        let index = self.counter as usize;
+        self.cluster_list.entry.remove(index);
+    }
+
+    pub fn get_cluster(&self) -> Result<&Cluster> {
+        self.cluster_list.get(self.counter as usize)
     }
 
     pub fn get_cluster_mut(&mut self) -> Result<&mut Cluster> {
-        let index = self.counter as usize;
-        if self.is_new_cluster() {
-            return Ok(&mut self._new_cluster);
-        }
-        self.cluster_list.get_mut(index)
+        self.cluster_list.get_mut(self.counter as usize)
     }
 
     pub fn get_input_buffer(&self) -> &str {
@@ -77,13 +95,18 @@ impl ClusterState {
 
     pub fn set_input_buffer(&mut self, value: &str) {
         let info_counter = self.info_counter as usize;
+        let new_name = if info_counter == 0 {
+            self.check_cluster_name(value)
+        } else {
+            value.to_string()
+        };
         let cluster = self.get_cluster_mut().unwrap();
         match info_counter {
-            0 => cluster.name = value.to_string(),
-            1 => cluster.host = value.to_string(),
-            2 => cluster.user = value.to_string(),
-            3 => cluster.identity_file = value.to_string(),
-            _ => cluster.name = value.to_string(),
+            0 => cluster.name = new_name,
+            1 => cluster.host = new_name,
+            2 => cluster.user = new_name,
+            3 => cluster.identity_file = new_name,
+            _ => {},
         }
         self.save_cluster_list().unwrap();
     }

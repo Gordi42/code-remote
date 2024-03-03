@@ -32,6 +32,7 @@ pub enum InputMode {
     #[default]
     Normal,
     Editing,
+    Remove,
 }
 
 #[derive(Debug, Default)]
@@ -90,7 +91,11 @@ impl App<'_> {
 
     pub fn toggle_focus(&mut self) {
         match self.focus {
-            Focus::List => { self.focus = Focus::Info; }
+            Focus::List => { 
+                if self.cluster_state.is_new_cluster() {
+                    self.cluster_state.add_new_cluster();
+                }
+                self.focus = Focus::Info; }
             Focus::Info => { self.focus = Focus::List; }
         };
     }
@@ -111,6 +116,7 @@ impl App<'_> {
             InputMode::Editing => { 
                 self.input_mode = InputMode::Normal; 
             }
+            _ => {}
         };
     }
 
@@ -120,12 +126,37 @@ impl App<'_> {
         self.toggle_editing();
     }
 
+    pub fn open_remove_mode(&mut self) {
+        self.input_mode = InputMode::Remove;
+    }
+
+    pub fn remove_selected(&mut self) {
+        match self.menu {
+            Menu::Cluster => {
+                self.cluster_state.remove_selected();
+                self.cluster_state.save_cluster_list().unwrap();
+                self.focus = Focus::List;
+            }
+            Menu::Spawner => {
+                // self.spawner_state.as_mut().unwrap().remove_selected();
+            }
+        };
+        self.input_mode = InputMode::Normal;
+    }
+
     pub fn pressed_right(&mut self) {
         match self.menu {
             Menu::Cluster => {
-                self.spawner_state = Some(
-                    self.cluster_state.get_spawner_state().unwrap());
-                self.menu = Menu::Spawner;
+                if self.cluster_state.is_new_cluster() {
+                    self.cluster_state.add_new_cluster();
+                    self.focus = Focus::Info;
+                    self.cluster_state.info_counter = 0;
+                    self.toggle_editing();
+                } else {
+                    self.spawner_state = Some(
+                        self.cluster_state.get_spawner_state().unwrap());
+                    self.menu = Menu::Spawner;
+                }
             }
             Menu::Spawner => {
                 self.quit();

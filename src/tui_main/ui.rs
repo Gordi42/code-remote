@@ -39,8 +39,13 @@ pub fn render(app: &mut App, f: &mut Frame) {
 
     match app.menu {
         Menu::Cluster => {
-            // Render the right section.
-            render_cluster_info(app, f, &layout[1]);
+            if app.cluster_state.is_new_cluster() {
+                render_create_new_dialog(f, &layout[1]);
+            }
+            else {
+                // Render the right section.
+                render_cluster_info(app, f, &layout[1]);
+            }
 
             // Render the left section.
             render_cluster_list(app, f, &layout[0]);
@@ -55,7 +60,10 @@ pub fn render(app: &mut App, f: &mut Frame) {
 
     match app.input_mode {
         InputMode::Editing => {
-            render_text_area(app, f, &layout[1]);
+            render_text_area(app, f);
+        }
+        InputMode::Remove => {
+            render_remove_dialog(f);
         }
         _ => {}
     }
@@ -174,20 +182,6 @@ pub fn render_cluster_info(app: &mut App, f: &mut Frame, area: &Rect) {
     f.render_stateful_widget(entry_names, layout[0], &mut state);
     f.render_stateful_widget(entry_values, layout[1], &mut state);
 
-    // let text = format!(
-    //     "Name: {}\n\
-    //     Host: {}\n\
-    //     User: {}\n\
-    //     IdentityFile: {}
-    //     ",
-    //     cluster.name, cluster.host, cluster.user, cluster.identity_file);
-    // f.render_widget(
-    //     Paragraph::new(text)
-    //         .block(Block::default().title(title).borders(Borders::ALL)
-    //         .border_type(BorderType::Rounded).fg(border_color))
-    //         .style(Style::default().fg(Color::White))
-    //         .alignment(Alignment::Left),
-    //     *area);
 }
 
 pub fn render_spawner_info(app: &mut App, f: &mut Frame, area: &Rect) {
@@ -216,7 +210,7 @@ pub fn render_spawner_info(app: &mut App, f: &mut Frame, area: &Rect) {
         *area);
 }
 
-pub fn render_text_area(app: &mut App, f: &mut Frame, area: &Rect) {
+pub fn render_text_area(app: &mut App, f: &mut Frame) {
     let window_width = f.size().width;
     let text_area_width = (0.8 * (window_width as f32)) as u16;
 
@@ -237,10 +231,37 @@ pub fn render_text_area(app: &mut App, f: &mut Frame, area: &Rect) {
     f.render_widget(app.text_area.widget(), rect);
 }
 
+pub fn render_remove_dialog(f: &mut Frame) {
+    let window_width = f.size().width;
+    let text_area_width = (0.8 * (window_width as f32)) as u16;
+
+    let rect = centered_rect(f.size(), text_area_width, 3);
+    f.render_widget(Clear, rect); //this clears out the background
+    let text = "Are you sure you want to remove this entry? (y/n)";
+    f.render_widget(
+        Paragraph::new(text)
+            .block(Block::default().borders(Borders::ALL)
+            .border_type(BorderType::Rounded))
+            .style(Style::default().fg(Color::Red))
+            .alignment(Alignment::Center),
+        rect);
+}
+
 fn centered_rect(area: Rect, width: u16, height: u16) -> Rect {
     let horizontal = Layout::horizontal([width]).flex(Flex::Center);
     let vertical = Layout::vertical([height]).flex(Flex::Center);
     let [area] = vertical.areas(area);
     let [area] = horizontal.areas(area);
     area
+}
+
+fn render_create_new_dialog(f: &mut Frame, area: &Rect) {
+    let text = "Press `Enter` to create a new entry.";
+    f.render_widget(
+        Paragraph::new(text)
+            .block(Block::default().borders(Borders::ALL)
+            .border_type(BorderType::Rounded))
+            .style(Style::default())
+            .alignment(Alignment::Center),
+        *area);
 }

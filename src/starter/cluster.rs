@@ -7,6 +7,7 @@ use std::{
 use ssh2::{Session, Channel};
 use serde::{Serialize, Deserialize};
 use color_eyre::{eyre::eyre, Result};
+use crate::starter::entry::Entry;
 
 
 #[derive(Debug, PartialEq)]
@@ -45,6 +46,16 @@ pub struct Cluster {
     pub host: String,
     pub user: String,
     pub identity_file: String,
+}
+
+impl Entry for Cluster {
+    fn get_entry_name(&self) -> String {
+        self.name.clone()
+    }
+
+    fn set_entry_name(&mut self, name: &str) {
+        self.name = name.to_string();
+    }
 }
 
 impl Cluster {

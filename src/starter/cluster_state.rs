@@ -2,7 +2,8 @@ use crate::starter::{
     cluster::Cluster,
     counter::Counter,
     spawner_state::SpawnerState,
-    toml_list::TomlList};
+    toml_list::TomlList,
+    state::State};
 use color_eyre::eyre::Result;
 
 const CLUSTER_FILE: &str = "clusters";
@@ -13,6 +14,33 @@ pub struct ClusterState {
     pub list_counter: Counter,
     pub info_counter: Counter,
     entries: TomlList<Cluster>,
+}
+
+impl State<Cluster> for ClusterState {
+    fn get_list_counter(&self) -> &Counter {
+        &self.list_counter
+    }
+
+    fn get_list_counter_mut(&mut self) -> &mut Counter {
+        &mut self.list_counter
+    }
+
+    fn get_info_counter(&self) -> &Counter {
+        &self.info_counter
+    }
+
+    fn get_info_counter_mut(&mut self) -> &mut Counter {
+        &mut self.info_counter
+    }
+
+    fn get_entries(&self) -> &TomlList<Cluster> {
+        &self.entries
+    }
+
+    fn get_entries_mut(&mut self) -> &mut TomlList<Cluster> {
+        &mut self.entries
+    }
+
 }
 
 impl ClusterState {
@@ -40,63 +68,6 @@ impl ClusterState {
     // =======================================================================
     //  GETTERS AND SETTERS
     // =======================================================================
-
-    pub fn add_entry(&mut self, cluster: Cluster) {
-        self.entries.push(cluster);
-        let list_length = self.entries.len() as u32;
-        self.list_counter.update_length(list_length+1);
-    }
-
-    pub fn add_new_entry(&mut self) {
-        let mut cluster = Cluster::new_empty();
-        cluster.name = self.check_entry_name("New Cluster");
-        self.add_entry(cluster);
-    }
-
-    // Check if a new cluster name is valid. E.g. it is not empty and 
-    // it does not exist in the list of clusters.
-    // If the name is not valid, it returns a modified name:
-    // new name = name + "(i)"  where i is the smallest integer such that
-    // the new name does not exist in the list of clusters.
-    pub fn check_entry_name(&self, name: &str) -> String {
-        let mut new_name = name.to_string();
-        if new_name.is_empty() {
-            new_name = "New Cluster".to_string();
-        }
-        let mut i = 1;
-        let mut name_list = self.get_entry_names();
-        // remove the current cluster name from the list
-        if !self.is_new_entry() {
-            let old_name = self.get_entry().unwrap().name.clone();
-            name_list.retain(|n| n != &old_name);
-        } else {
-            name_list.pop();
-        }
-
-        // find a new name that does not exist in the list
-        while name_list.contains(&new_name) {
-            new_name = format!("{}({})", name, i);
-            i += 1;
-        }
-        new_name
-    }
-
-    pub fn remove_selected(&mut self) {
-        let index = self.list_counter.get_value() as usize;
-        self.entries.entry.remove(index);
-        let list_length = self.entries.len() as u32;
-        self.list_counter.update_length(list_length+1);
-    }
-
-    pub fn get_entry(&self) -> Result<&Cluster> {
-        let index = self.list_counter.get_value();
-        self.entries.get(index as usize)
-    }
-
-    pub fn get_entry_mut(&mut self) -> Result<&mut Cluster> {
-        let index = self.list_counter.get_value();
-        self.entries.get_mut(index as usize)
-    }
 
     pub fn get_input_buffer(&self) -> &str {
         let cluster = self.get_entry().unwrap();
@@ -132,22 +103,9 @@ impl ClusterState {
         SpawnerState::new_load(cluster)
     }
 
-    pub fn get_entry_names(&self) -> Vec<String> {
-        let mut clust_list: Vec<String> = self.entries.entry
-            .iter().map(|c| c.name.clone()).collect();
-        clust_list.push("Create New".to_string());
-        clust_list
-    }
-
     // =======================================================================
     //  CHECKERS
     // =======================================================================
-
-    pub fn is_new_entry(&self) -> bool {
-        // if the counter is at the end of the list, the new cluster is selected
-        let index = self.list_counter.get_value();
-        index == self.entries.len() as u32
-    }
 
     // pub fn cluster_is_valid(self) -> eyre::Result<()> {
     //     let cluster = self.get_entry()?;

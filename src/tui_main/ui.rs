@@ -5,6 +5,7 @@ use ratatui::{
 };
 use ratatui::{prelude::*, widgets::*, layout::Flex};
 use crate::tui_main::app::{App, Focus, Menu, InputMode};
+use crate::starter::state::State;
 
 pub fn render(app: &mut App, f: &mut Frame) {
 

@@ -1,13 +1,15 @@
-use crate::starter::cluster::Cluster;
+use crate::starter::{
+    cluster::Cluster,
+    entry::Entry};
 use ssh2::Session;
-use std::{io::Read, process::Command};
+use std::{io::Read, process::Command, default::Default};
 use regex::Regex;
 use color_eyre::eyre::Result;
 use serde::{Serialize, Deserialize};
 
 const NODE_NAME_REGEX: &str = r"l\d{5}";
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Default)]
 pub struct Spawner {
     pub preset_name: String,
     // pub cluster: &'a Cluster,
@@ -16,6 +18,16 @@ pub struct Spawner {
     pub time: String,
     pub working_directory: String,
     pub other_options: String,
+}
+
+impl Entry for Spawner {
+    fn get_entry_name(&self) -> String {
+        self.preset_name.clone()
+    }
+
+    fn set_entry_name(&mut self, name: &str) {
+        self.preset_name = name.to_string();
+    }
 }
 
 impl Spawner {

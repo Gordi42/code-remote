@@ -2,12 +2,17 @@ use crate::starter::{
     cluster::Cluster,
     spawner_state::SpawnerState,
     toml_list::TomlList};
+use crate::tui_main::app::Focus;
 use color_eyre::eyre::Result;
 use serde::{Serialize, Deserialize};
+
+const CLUSTER_FILE: &str = "clusters";
+const MAX_INFO_COUNTER: u32 = 4;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Default)]
 pub struct ClusterState {
     pub counter: u32,
+    pub info_counter: u32,
     cluster_list: TomlList<Cluster>,
     _new_cluster: Cluster,
 }
@@ -20,14 +25,16 @@ impl ClusterState {
         let cluster_list: TomlList<Cluster> = TomlList::new();
         Ok(ClusterState {
             counter: 0,
+            info_counter: 0,
             cluster_list: cluster_list,
             _new_cluster: Cluster::new_empty(),
         })
     }
     pub fn new_load() -> Result<ClusterState> {
-        let cluster_list: TomlList<Cluster> = TomlList::load("clusters")?;
+        let cluster_list: TomlList<Cluster> = TomlList::load(CLUSTER_FILE)?;
         Ok(ClusterState {
             counter: 0,
+            info_counter: 0,
             cluster_list: cluster_list,
             _new_cluster: Cluster::new_empty(),
         })
@@ -47,6 +54,38 @@ impl ClusterState {
             return Ok(&self._new_cluster);
         }
         self.cluster_list.get(index)
+    }
+
+    pub fn get_cluster_mut(&mut self) -> Result<&mut Cluster> {
+        let index = self.counter as usize;
+        if self.is_new_cluster() {
+            return Ok(&mut self._new_cluster);
+        }
+        self.cluster_list.get_mut(index)
+    }
+
+    pub fn get_input_buffer(&self) -> &str {
+        let cluster = self.get_cluster().unwrap();
+        match self.info_counter {
+            0 => &cluster.name,
+            1 => &cluster.host,
+            2 => &cluster.user,
+            3 => &cluster.identity_file,
+            _ => &cluster.name,
+        }
+    }
+
+    pub fn set_input_buffer(&mut self, value: &str) {
+        let info_counter = self.info_counter as usize;
+        let cluster = self.get_cluster_mut().unwrap();
+        match info_counter {
+            0 => cluster.name = value.to_string(),
+            1 => cluster.host = value.to_string(),
+            2 => cluster.user = value.to_string(),
+            3 => cluster.identity_file = value.to_string(),
+            _ => cluster.name = value.to_string(),
+        }
+        self.save_cluster_list().unwrap();
     }
 
     pub fn get_spawner_state(&self) -> Result<SpawnerState> {
@@ -80,11 +119,11 @@ impl ClusterState {
     // =======================================================================
 
     pub fn save_cluster_list(&self) -> Result<()> {
-        self.cluster_list.save("clusters")
+        self.cluster_list.save(CLUSTER_FILE)
     }
 
     pub fn load_cluster_list(&mut self) -> Result<()> {
-        let loaded_list: TomlList<Cluster> = TomlList::load("clusters")?;
+        let loaded_list: TomlList<Cluster> = TomlList::load(CLUSTER_FILE)?;
         self.cluster_list = loaded_list;
         Ok(())
     }
@@ -92,6 +131,34 @@ impl ClusterState {
     // =======================================================================
     //            CONTROLS
     // =======================================================================
+    pub fn increment_counter(&mut self, focus: &Focus) {
+        match focus {
+            Focus::List => {
+                self.next();
+            }
+            Focus::Info => {
+                self.info_counter += 1;
+                if self.info_counter >= MAX_INFO_COUNTER {
+                    self.info_counter = 0;
+                }
+            }
+        }
+    }
+
+    pub fn decrement_counter(&mut self, focus: &Focus) {
+        match focus {
+            Focus::List => {
+                self.previous();
+            }
+            Focus::Info => {
+                if self.info_counter == 0 {
+                    self.info_counter = MAX_INFO_COUNTER;
+                }
+                self.info_counter -= 1;
+            }
+        }
+    }
+    
 
     pub fn next(&mut self) {
         let max = self.cluster_list.len() as u32;

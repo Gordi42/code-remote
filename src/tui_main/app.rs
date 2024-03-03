@@ -7,6 +7,7 @@ use crossterm::{
     event::{DisableMouseCapture},
     terminal::{self, LeaveAlternateScreen},
 };
+use tui_textarea::{TextArea};
 use std::io;
 
 pub enum Action {
@@ -19,51 +20,40 @@ pub enum Action {
     None,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub enum Focus {
+    #[default]
     List,
     Info,
 }
-impl Default for Focus {
-    fn default() -> Self {
-        Focus::List
-    }
-}
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub enum InputMode {
+    #[default]
     Normal,
     Editing,
 }
-impl Default for InputMode {
-    fn default() -> Self {
-        InputMode::Normal
-    }
-}
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub enum Menu {
+    #[default]
     Cluster,
     Spawner,
 }
-impl Default for Menu {
-    fn default() -> Self {
-        Menu::Cluster
-    }
-}
 
 #[derive(Debug, Default)]
-pub struct App {
+pub struct App<'a> {
     pub should_quit: bool,
-    pub counter: u8,
     pub cluster_state: ClusterState,
     pub spawner_state: Option<SpawnerState>,
+    pub text_area: TextArea<'a>,
     pub focus: Focus,
     pub input_mode: InputMode,
+    pub input_buffer: String,
     pub menu: Menu,
 }
 
-impl App {
+impl App<'_> {
     pub fn new() -> Result<Self> {
         let mut new_app = Self::default();
         new_app.cluster_state = ClusterState::new_load()?;
@@ -77,37 +67,57 @@ impl App {
     }
 
     pub fn increment_counter(&mut self) {
-        match self.focus {
-            Focus::List => {
-                match self.menu {
-                    Menu::Cluster => {
-                        self.cluster_state.next();
-                    }
-                    Menu::Spawner => {
-                        self.spawner_state.as_mut().unwrap().next();
-                    }
-                };
+        match self.menu {
+            Menu::Cluster => {
+                self.cluster_state.increment_counter(&self.focus);
             }
-            Focus::Info => { }
-        };
-        return
+            Menu::Spawner => {
+                self.spawner_state.as_mut().unwrap().next();
+            }
+        }
     }
 
     pub fn decrement_counter(&mut self) {
-        match self.focus {
-            Focus::List => {
-                match self.menu {
-                    Menu::Cluster => {
-                        self.cluster_state.previous();
-                    }
-                    Menu::Spawner => {
-                        self.spawner_state.as_mut().unwrap().previous();
-                    }
-                };
+        match self.menu {
+            Menu::Cluster => {
+                self.cluster_state.decrement_counter(&self.focus);
             }
-            Focus::Info => { }
+            Menu::Spawner => {
+                self.spawner_state.as_mut().unwrap().previous();
+            }
+        }
+    }
+
+    pub fn toggle_focus(&mut self) {
+        match self.focus {
+            Focus::List => { self.focus = Focus::Info; }
+            Focus::Info => { self.focus = Focus::List; }
         };
-        return
+    }
+
+    pub fn toggle_editing(&mut self) {
+        // only allow toggling when the focus is on the info section
+        match self.focus {
+            Focus::List => {return}
+            _ => {}
+        };
+        match self.input_mode {
+            InputMode::Normal => { 
+                let buffer = self.cluster_state.get_input_buffer();
+                self.input_buffer = buffer.to_string();
+                self.text_area = TextArea::from([buffer]);
+                self.input_mode = InputMode::Editing; 
+            }
+            InputMode::Editing => { 
+                self.input_mode = InputMode::Normal; 
+            }
+        };
+    }
+
+    pub fn save_input_buffer(&mut self) {
+        let buffer = self.text_area.lines().join("\n");
+        self.cluster_state.set_input_buffer(&buffer);
+        self.toggle_editing();
     }
 
     pub fn pressed_right(&mut self) {
@@ -136,14 +146,6 @@ impl App {
         };
     }
 
-
-    pub fn enter_info(&mut self) {
-        self.focus = Focus::Info;
-    }
-
-    pub fn enter_list(&mut self) {
-        self.focus = Focus::List;
-    }
 }
 
 

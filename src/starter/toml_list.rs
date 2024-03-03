@@ -30,6 +30,12 @@ impl<T: Serialize> TomlList<T> {
         Ok(entry)
     }
 
+    pub fn get_mut(&mut self, index: usize) -> eyre::Result<&mut T> {
+        let entry = self.entry.get_mut(index)
+            .ok_or_else(|| eyre::eyre!("Index out of bounds."))?;
+        Ok(entry)
+    }
+
     pub fn len(&self) -> usize {
         self.entry.len()
     }

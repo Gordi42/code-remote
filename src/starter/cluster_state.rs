@@ -1,7 +1,6 @@
 use crate::starter::{
     cluster::Cluster,
     counter::Counter,
-    spawner_state::SpawnerState,
     toml_list::TomlList,
     state::State};
 use color_eyre::eyre::Result;
@@ -9,7 +8,7 @@ use color_eyre::eyre::Result;
 const CLUSTER_FILE: &str = "clusters";
 const MAX_INFO_COUNTER: u32 = 4;
 
-#[derive(Debug, PartialEq, Default)]
+#[derive(Debug, PartialEq)]
 pub struct ClusterState {
     pub list_counter: Counter,
     pub info_counter: Counter,
@@ -41,89 +40,31 @@ impl State<Cluster> for ClusterState {
         &mut self.entries
     }
 
-}
+    fn get_filename(&self) -> &str {
+        CLUSTER_FILE
+    }
 
-impl ClusterState {
-    // =======================================================================
-    //             CONSTRUCTORS
-    // =======================================================================
-    pub fn new_empty() -> Result<ClusterState> {
+}
+impl Default for ClusterState {
+    fn default() -> Self {
         let entries: TomlList<Cluster> = TomlList::new();
-        Ok(ClusterState {
+        ClusterState {
             list_counter: Counter::new(1),
             info_counter: Counter::new(MAX_INFO_COUNTER),
             entries: entries,
-        })
-    }
-    pub fn new_load() -> Result<ClusterState> {
-        let entries: TomlList<Cluster> = TomlList::load(CLUSTER_FILE)?;
-        let list_length = entries.len() as u32;
-        Ok(ClusterState {
-            list_counter: Counter::new(list_length+1),
-            info_counter: Counter::new(MAX_INFO_COUNTER),
-            entries: entries,
-        })
-    }
-
-    // =======================================================================
-    //  GETTERS AND SETTERS
-    // =======================================================================
-
-    pub fn get_input_buffer(&self) -> &str {
-        let cluster = self.get_entry().unwrap();
-        match self.info_counter.get_value() {
-            0 => &cluster.name,
-            1 => &cluster.host,
-            2 => &cluster.user,
-            3 => &cluster.identity_file,
-            _ => &cluster.name,
         }
     }
+}
 
-    pub fn set_input_buffer(&mut self, value: &str) {
-        let info_counter = self.info_counter.get_value() as usize;
-        let new_name = if info_counter == 0 {
-            self.check_entry_name(value)
-        } else {
-            value.to_string()
-        };
-        let cluster = self.get_entry_mut().unwrap();
-        match info_counter {
-            0 => cluster.name = new_name,
-            1 => cluster.host = new_name,
-            2 => cluster.user = new_name,
-            3 => cluster.identity_file = new_name,
-            _ => {},
-        }
-        self.save_entries().unwrap();
-    }
+impl ClusterState {
 
-    pub fn get_spawner_state(&self) -> Result<SpawnerState> {
-        let cluster = self.get_entry()?;
-        SpawnerState::new_load(cluster)
-    }
-
-    // =======================================================================
+    // =====================================================================
     //  CHECKERS
-    // =======================================================================
+    // =====================================================================
 
-    // pub fn cluster_is_valid(self) -> eyre::Result<()> {
-    //     let cluster = self.get_entry()?;
-    //     cluster.check_if_cluster_is_valid()
-    // }
-
-    // =======================================================================
-    //            FILE OPERATIONS
-    // =======================================================================
-
-    pub fn save_entries(&self) -> Result<()> {
-        self.entries.save(CLUSTER_FILE)
-    }
-
-    pub fn load_entries(&mut self) -> Result<()> {
-        let loaded_list: TomlList<Cluster> = TomlList::load(CLUSTER_FILE)?;
-        self.entries = loaded_list;
-        Ok(())
+    pub fn cluster_is_valid(self) -> Result<()> {
+        let cluster = self.get_entry()?;
+        cluster.cluster_is_valid()
     }
 
 }

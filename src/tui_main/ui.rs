@@ -177,8 +177,7 @@ pub fn render_spawner_menu(app: &mut App, f: &mut Frame, area: &Rect) {
     render_spawner_list(app, f, &layout[0]);
 
     // Render the info section.
-    let spawner_state = app.spawner_state.as_ref().unwrap();
-    if spawner_state.is_new_entry() {
+    if app.spawner_state.is_new_entry() {
         render_create_new_dialog(f, &layout[1]);
     } else {
         render_spawner_info(app, f, &layout[1]);
@@ -188,10 +187,9 @@ pub fn render_spawner_menu(app: &mut App, f: &mut Frame, area: &Rect) {
 pub fn render_spawner_list(app: &mut App, f: &mut Frame, area: &Rect) {
     let inner_area = render_border(
         f, area, "Spawners: ", app.focus == Focus::List);
-    let spawner_state = app.spawner_state.as_ref().unwrap();
-    let index = spawner_state.list_counter.get_value();
+    let index = app.spawner_state.list_counter.get_value();
     // create a list with the spawner names
-    render_list(f, &inner_area, spawner_state.get_entry_names(),
+    render_list(f, &inner_area, app.spawner_state.get_entry_names(),
                 true, index as usize, " > ");
 }
 
@@ -205,13 +203,12 @@ pub fn render_spawner_info(app: &mut App, f: &mut Frame, area: &Rect) {
 
     let enable_highlight = app.focus == Focus::Info;
 
-    let spawner_state = app.spawner_state.as_ref().unwrap();
-    let spawner = spawner_state.get_entry().unwrap();
+    let spawner = app.spawner_state.get_entry().unwrap();
 
     render_list(f, &layout[0], spawner.get_entry_names(), enable_highlight, 
-                spawner_state.info_counter.get_value() as usize, "  ");
+                app.spawner_state.info_counter.get_value() as usize, "  ");
     render_list(f, &layout[1], spawner.get_entry_values(), enable_highlight, 
-                spawner_state.info_counter.get_value() as usize, "  ");
+                app.spawner_state.info_counter.get_value() as usize, "  ");
 
 }
 

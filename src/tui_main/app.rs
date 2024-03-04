@@ -45,7 +45,7 @@ pub enum Menu {
 pub struct App<'a> {
     pub should_quit: bool,
     pub cluster_state: ClusterState,
-    pub spawner_state: Option<SpawnerState>,
+    pub spawner_state: SpawnerState,
     pub text_area: TextArea<'a>,
     pub focus: Focus,
     pub input_mode: InputMode,
@@ -56,7 +56,7 @@ pub struct App<'a> {
 impl App<'_> {
     pub fn new() -> Result<Self> {
         let mut new_app = Self::default();
-        new_app.cluster_state = ClusterState::new_load()?;
+        new_app.cluster_state.load_entries()?;
         Ok(new_app)
     }
 
@@ -72,8 +72,7 @@ impl App<'_> {
                 self.cluster_state.info_counter.increment();
             }
             Menu::Spawner => {
-                let spawner_state = self.spawner_state.as_mut().unwrap();
-                spawner_state.info_counter.increment();
+                self.spawner_state.info_counter.increment();
             }
         }
     }
@@ -84,8 +83,7 @@ impl App<'_> {
                 self.cluster_state.info_counter.decrement();
             }
             Menu::Spawner => {
-                let spawner_state = self.spawner_state.as_mut().unwrap();
-                spawner_state.info_counter.decrement();
+                self.spawner_state.info_counter.decrement();
             }
         }
     }
@@ -96,8 +94,7 @@ impl App<'_> {
                 self.cluster_state.list_counter.increment();
             }
             Menu::Spawner => {
-                let spawner_state = self.spawner_state.as_mut().unwrap();
-                spawner_state.list_counter.increment();
+                self.spawner_state.list_counter.increment();
             }
         }
     }
@@ -105,12 +102,10 @@ impl App<'_> {
     pub fn decrement_counter(&mut self) {
         match self.menu {
             Menu::Cluster => {
-                // self.cluster_state.decrement_counter();
                 self.cluster_state.list_counter.decrement();
             }
             Menu::Spawner => {
-                let spawner_state = self.spawner_state.as_mut().unwrap();
-                spawner_state.list_counter.decrement();
+                self.spawner_state.list_counter.decrement();
             }
         }
     }
@@ -138,8 +133,7 @@ impl App<'_> {
                     Menu::Cluster => 
                         self.cluster_state.get_input_buffer(),
                     Menu::Spawner => 
-                        self.spawner_state.as_ref()
-                            .unwrap().get_input_buffer(),
+                        self.spawner_state.get_input_buffer().to_string(),
                 };
                 self.text_area = TextArea::from([buffer]);
                 self.input_mode = InputMode::Editing; 
@@ -158,9 +152,7 @@ impl App<'_> {
                 self.cluster_state.set_input_buffer(&buffer);
             }
             Menu::Spawner => {
-                let cluster = self.cluster_state.get_entry().unwrap();
-                self.spawner_state.as_mut().unwrap()
-                    .set_input_buffer(&buffer, &cluster);
+                self.spawner_state.set_input_buffer(&buffer);
             }
         };
         self.toggle_editing();
@@ -178,10 +170,8 @@ impl App<'_> {
                 self.focus = Focus::List;
             }
             Menu::Spawner => {
-                let spawner_state = self.spawner_state.as_mut().unwrap();
-                spawner_state.remove_selected();
-                let cluster = self.cluster_state.get_entry().unwrap();
-                spawner_state.save_entries(&cluster).unwrap();
+                self.spawner_state.remove_selected();
+                self.spawner_state.save_entries().unwrap();
                 self.focus = Focus::List;
             }
         };
@@ -197,29 +187,27 @@ impl App<'_> {
                     self.cluster_state.info_counter.reset();
                     self.toggle_editing();
                 } else {
-                    self.spawner_state = Some(
-                        self.cluster_state.get_spawner_state().unwrap());
+                    let cluster = self.cluster_state.get_entry().unwrap();
+                    self.spawner_state.cluster_name = cluster.name.clone();
+                    self.spawner_state.load_entries().unwrap();
                     self.menu = Menu::Spawner;
                 }
             }
             Menu::Spawner => {
                 let is_new: bool;
                 {
-                    is_new = self.spawner_state.as_ref().unwrap()
-                        .is_new_entry();
+                    is_new = self.spawner_state.is_new_entry();
                 }
                 if is_new {
-                    let spawner_state = self.spawner_state.as_mut().unwrap();
-                    spawner_state.add_new_entry();
+                    self.spawner_state.add_new_entry();
                     self.focus = Focus::Info;
-                    spawner_state.info_counter.reset();
+                    self.spawner_state.info_counter.reset();
                     self.toggle_editing();
                 } else {
                     self.quit();
                     reset().expect("failed to reset the terminal");
                     let cluster = self.cluster_state.get_entry().unwrap();
-                    let spawner_state = self.spawner_state.as_ref().unwrap();
-                    spawner_state.spawn(&cluster).unwrap();
+                    self.spawner_state.spawn(&cluster).unwrap();
                 }
             }
         };
@@ -230,7 +218,7 @@ impl App<'_> {
             Menu::Cluster => { }
             Menu::Spawner => {
                 self.menu = Menu::Cluster;
-                self.spawner_state = None;
+                self.spawner_state = SpawnerState::default();
             }
         };
     }

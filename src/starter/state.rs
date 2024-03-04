@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use color_eyre::eyre::Result;
 use std::default::Default;
 
@@ -7,7 +7,7 @@ use crate::starter::{
     counter::Counter,
     toml_list::TomlList};
 
-pub trait State<T: Serialize + PartialEq + Entry + Default> {
+pub trait State<T: Serialize + for<'a> Deserialize<'a> + PartialEq + Entry + Default> {
 // =======================================================================
 //  METHODS TO IMPLEMENT
 // =======================================================================
@@ -17,10 +17,14 @@ pub trait State<T: Serialize + PartialEq + Entry + Default> {
     fn get_info_counter_mut(&mut self) -> &mut Counter;
     fn get_entries(&self) -> &TomlList<T>;
     fn get_entries_mut(&mut self) -> &mut TomlList<T>;
+    fn get_filename(&self) -> &str;
 
 // =======================================================================
 //  DEFAULT METHODS
 // =======================================================================
+    // =======================================================================
+    //             CONSTRUCTORS
+    // =======================================================================
 
     // -----------------------------------------------------------------------
     //  GETTERS AND SETTERS
@@ -42,6 +46,24 @@ pub trait State<T: Serialize + PartialEq + Entry + Default> {
             .iter().map(|c| c.get_entry_name()).collect();
         spawn_list.push("Create New".to_string());
         spawn_list
+    }
+
+    fn get_input_buffer(&self) -> String {
+        let index = self.get_info_counter().get_value() as usize;
+        let entry = self.get_entry().unwrap();
+        entry.get_value_from_index(index)
+    }
+
+    fn set_input_buffer(&mut self, value: &str) {
+        let index = self.get_info_counter().get_value() as usize;
+        let new_name = if index == 0 {
+            self.check_entry_name(value)
+        } else {
+            value.to_string()
+        };
+        let entry = self.get_entry_mut().unwrap();
+        entry.set_value_from_index(index, &new_name);
+        self.save_entries().unwrap();
     }
 
     // -----------------------------------------------------------------------
@@ -100,4 +122,31 @@ pub trait State<T: Serialize + PartialEq + Entry + Default> {
         }
         new_name
     }
+
+    // =======================================================================
+    //            FILE OPERATIONS
+    // =======================================================================
+
+    fn save_entries(&mut self) -> Result<()> {
+        let filename: String;
+        {
+            filename = self.get_filename().to_string();
+        }
+        let entries = self.get_entries_mut();
+        entries.save(&filename)
+    }
+
+    fn load_entries(&mut self) -> Result<()> {
+        let filename: String;
+        {
+            filename = self.get_filename().to_string();
+        }
+        let entries = self.get_entries_mut();
+        let new_entries = TomlList::load(&filename)?;
+        entries.set_list(new_entries.entry);
+        let entry_len = entries.len() as u32;
+        self.get_list_counter_mut().update_length(entry_len + 1);
+        Ok(())
+    }
+
 }

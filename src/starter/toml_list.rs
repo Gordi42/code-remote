@@ -36,6 +36,10 @@ impl<T: Serialize> TomlList<T> {
         Ok(entry)
     }
 
+    pub fn set_list(&mut self, list: Vec<T>) {
+        self.entry = list;
+    }
+
     pub fn len(&self) -> usize {
         self.entry.len()
     }

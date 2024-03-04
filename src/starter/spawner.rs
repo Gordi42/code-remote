@@ -28,6 +28,30 @@ impl Entry for Spawner {
     fn set_entry_name(&mut self, name: &str) {
         self.preset_name = name.to_string();
     }
+
+    fn get_value_from_index(&self, index: usize) -> String {
+        match index {
+            0 => self.preset_name.clone(),
+            1 => self.account.clone(),
+            2 => self.partition.clone(),
+            3 => self.time.clone(),
+            4 => self.working_directory.clone(),
+            5 => self.other_options.clone(),
+            _ => String::from(""),
+        }
+    }
+
+    fn set_value_from_index(&mut self, index: usize, value: &str) {
+        match index {
+            0 => self.preset_name = value.to_string(),
+            1 => self.account = value.to_string(),
+            2 => self.partition = value.to_string(),
+            3 => self.time = value.to_string(),
+            4 => self.working_directory = value.to_string(),
+            5 => self.other_options = value.to_string(),
+            _ => {},
+        }
+    }
 }
 
 impl Spawner {

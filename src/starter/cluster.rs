@@ -56,6 +56,26 @@ impl Entry for Cluster {
     fn set_entry_name(&mut self, name: &str) {
         self.name = name.to_string();
     }
+
+    fn get_value_from_index(&self, index: usize) -> String {
+        match index {
+            0 => self.name.clone(),
+            1 => self.host.clone(),
+            2 => self.user.clone(),
+            3 => self.identity_file.clone(),
+            _ => String::new(),
+        }
+    }
+
+    fn set_value_from_index(&mut self, index: usize, value: &str) {
+        match index {
+            0 => self.name = value.to_string(),
+            1 => self.host = value.to_string(),
+            2 => self.user = value.to_string(),
+            3 => self.identity_file = value.to_string(),
+            _ => {},
+        }
+    }
 }
 
 impl Cluster {
@@ -103,6 +123,7 @@ impl Cluster {
             self.identity_file.clone(),
         ]
     }
+
 
 
 

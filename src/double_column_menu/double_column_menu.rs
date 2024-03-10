@@ -101,7 +101,6 @@ pub trait DoubleColumnMenu<T: Serialize + for<'a> Deserialize<'a> + PartialEq + 
         self.get_entries_mut().push(entry);
         let list_length = self.get_entries().len() as u32;
         self.get_list_counter_mut().update_length(list_length+1);
-        println!("{:?}", self.get_entries().len());
     }
 
     fn add_new_entry(&mut self) {

@@ -1,6 +1,7 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-use crate::tui_main::app::{App, InputMode, Focus};
+use crate::tui_main::app::{App, InputMode, Focus, Menu};
+use crate::starter::state::State;
 
 pub fn update(app: &mut App, key_event: KeyEvent) {
     match app.input_mode {
@@ -19,24 +20,21 @@ pub fn normal_mode(app: &mut App, key_event: KeyEvent) {
             }
         }
         KeyCode::Char('i') => app.toggle_editing(),
-        KeyCode::Tab => app.toggle_focus(),
-        KeyCode::Char('d') => app.open_remove_mode(),
+        // KeyCode::Char('d') => app.open_remove_mode(),
         _ => {}
+    };
+    match app.menu {
+        Menu::Cluster => app.cluster_state.input(key_event),
+        Menu::Spawner => app.spawner_state.input(key_event),
     };
     match app.focus {
         Focus::List => match key_event.code {
             KeyCode::Right | KeyCode::Char('l') | KeyCode::Enter
                 => app.pressed_right(),
             KeyCode::Left | KeyCode::Char('h') => app.pressed_left(),
-            KeyCode::Down | KeyCode::Char('j') => app.increment_counter(),
-            KeyCode::Up | KeyCode::Char('k') => app.decrement_counter(),
             _ => {}
         }
         Focus::Info => match key_event.code {
-            KeyCode::Down | KeyCode::Char('j') 
-                => app.increment_info_counter(),
-            KeyCode::Up | KeyCode::Char('k') 
-                => app.decrement_info_counter(),
             KeyCode::Enter
                 => app.toggle_editing(),
             _ => {}

@@ -1,23 +1,27 @@
+use tui_textarea::{TextArea};
+use color_eyre::eyre::Result;
+
 use crate::starter::{
     cluster::Cluster,
     spawner::Spawner,
     toml_list::TomlList,
     counter::Counter,
-    state::{State, Focus}};
-use color_eyre::eyre::Result;
+    state::{State, Focus, InputMode}};
 
 const MAX_INFO_COUNTER: u32 = 6;
 
-#[derive(Debug, PartialEq)]
-pub struct SpawnerState {
+#[derive(Debug)]
+pub struct SpawnerState<'a> {
     pub cluster_name: String,
     pub list_counter: Counter,
     pub info_counter: Counter,
     entries: TomlList<Spawner>,
     focus: Focus,
+    input_mode: InputMode,
+    text_area: TextArea<'a>,
 }
 
-impl Default for SpawnerState {
+impl Default for SpawnerState<'_> {
     fn default() -> Self {
         let entries: TomlList<Spawner> = TomlList::new();
         SpawnerState {
@@ -26,11 +30,13 @@ impl Default for SpawnerState {
             info_counter: Counter::new(MAX_INFO_COUNTER),
             entries: entries,
             focus: Focus::default(),
+            input_mode: InputMode::default(),
+            text_area: TextArea::default(),
         }
     }
 }
 
-impl State<Spawner> for SpawnerState {
+impl<'a> State<Spawner> for SpawnerState<'a> {
     fn get_list_counter(&self) -> &Counter {
         &self.list_counter
     }
@@ -66,9 +72,25 @@ impl State<Spawner> for SpawnerState {
     fn get_focus(&self) -> &Focus {
         &self.focus
     }
+
+    fn get_focus_mut(&mut self) -> &mut Focus {
+        &mut self.focus
+    }
+
+    fn get_input_mode(&self) -> &InputMode {
+        &self.input_mode
+    }
+
+    fn get_input_mode_mut(&mut self) -> &mut InputMode {
+        &mut self.input_mode
+    }
+
+    fn get_text_area(&mut self) -> &mut TextArea<'a> {
+        &mut self.text_area
+    }
 }
 
-impl SpawnerState {
+impl SpawnerState<'_> {
 
     // ======================================================================
     //  SPAWN OPERATIONS

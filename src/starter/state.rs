@@ -1,7 +1,9 @@
 use serde::{Serialize, Deserialize};
 use color_eyre::eyre::Result;
 use std::default::Default;
-use ratatui::{prelude::*, widgets::*};
+use ratatui::{prelude::*, widgets::*, layout::Flex};
+use crossterm::event::{KeyCode, KeyEvent};
+use tui_textarea::{TextArea};
 
 use crate::starter::{
     entry::Entry,
@@ -13,6 +15,14 @@ pub enum Focus {
     #[default]
     List,
     Info,
+}
+
+#[derive(Debug, Default, PartialEq)]
+pub enum InputMode {
+    #[default]
+    Normal,
+    Editing,
+    Remove,
 }
 
 pub trait State<T: Serialize + for<'a> Deserialize<'a> + PartialEq + Entry + Default> {
@@ -28,6 +38,10 @@ pub trait State<T: Serialize + for<'a> Deserialize<'a> + PartialEq + Entry + Def
     fn get_filename(&self) -> &str;
     fn get_titlename(&self) -> &str;
     fn get_focus(&self) -> &Focus;
+    fn get_focus_mut(&mut self) -> &mut Focus;
+    fn get_input_mode(&self) -> &InputMode;
+    fn get_input_mode_mut(&mut self) -> &mut InputMode;
+    fn get_text_area(&mut self) -> &mut TextArea;
 
 // =======================================================================
 //  DEFAULT METHODS
@@ -84,12 +98,12 @@ pub trait State<T: Serialize + for<'a> Deserialize<'a> + PartialEq + Entry + Def
         self.get_entries_mut().push(entry);
         let list_length = self.get_entries().len() as u32;
         self.get_list_counter_mut().update_length(list_length+1);
+        println!("{:?}", self.get_entries().len());
     }
 
     fn add_new_entry(&mut self) {
         let mut new_entry = T::default();
         new_entry.set_entry_name(&self.check_entry_name("New Entry"));
-        // spawner.preset_name = self.check_entry_name("New Preset");
         self.add_entry(new_entry);
     }
 
@@ -98,6 +112,10 @@ pub trait State<T: Serialize + for<'a> Deserialize<'a> + PartialEq + Entry + Def
         self.get_entries_mut().entry.remove(index);
         let list_length = self.get_entries().len() as u32;
         self.get_list_counter_mut().update_length(list_length+1);
+        // reset the focus to the list
+        *self.get_focus_mut() = Focus::List;
+        *self.get_input_mode_mut() = InputMode::Normal;
+        self.save_entries().unwrap();
     }
 
     // -----------------------------------------------------------------------
@@ -162,8 +180,17 @@ pub trait State<T: Serialize + for<'a> Deserialize<'a> + PartialEq + Entry + Def
     // =======================================================================
     //            Rendering
     // =======================================================================
-    
+
     fn render(&self, f: &mut Frame, area: &Rect) {
+        // always render the menu
+        self.render_menu(f, area);
+        // render the remove dialog if the input mode is remove
+        if *self.get_input_mode() == InputMode::Remove {
+            render_remove_dialog(f);
+        }
+    }
+    
+    fn render_menu(&self, f: &mut Frame, area: &Rect) {
         // split the area horizontally, such that the left hand side 
         // shows a list of selectable entries, end the right hand 
         // side information about the entry 
@@ -208,10 +235,100 @@ pub trait State<T: Serialize + for<'a> Deserialize<'a> + PartialEq + Entry + Def
                     counter, "  ");
     }
 
+    // fn render_editing(&self, f: &mut Frame, area: &Rect) {
+    //     let focus = self.get_focus();
+    //     let inner_area = render_border(
+    //         f, area, "Editing: ", focus == Focus::Info);
+    //     let text = self.get_input_buffer();
+    //     f.render_widget(
+    //         Paragraph::new(text)
+    //             .block(Block::default().borders(Borders::ALL)
+    //             .border_type(BorderType::Rounded))
+    //             .style(Style::default())
+    //             .alignment(Alignment::Center),
+    //         inner_area);
+    // }
+
+
     // =======================================================================
     //           INPUT HANDLING
     // =======================================================================
 
+    fn input(&mut self, key_event: KeyEvent) {
+        match self.get_input_mode() {
+            InputMode::Normal => self.input_normal_mode(key_event),
+            InputMode::Remove => self.input_remove_mode(key_event),
+            _ => {}
+            // InputMode::Editing => self.input_editing(key_event),
+        }
+    }
+
+    fn input_normal_mode(&mut self, key_event: KeyEvent) {
+        match key_event.code {
+            KeyCode::Tab => self.toggle_focus(),
+            KeyCode::Down | KeyCode::Char('j') => self.on_down(),
+            KeyCode::Up | KeyCode::Char('k') => self.on_up(),
+            KeyCode::Char('d') => self.open_remove_mode(),
+            _ => {}
+        };
+    }
+
+    fn input_remove_mode(&mut self, key_event: KeyEvent) {
+        match key_event.code {
+            KeyCode::Enter | KeyCode::Char('y') => self.remove_selected(),
+            KeyCode::Esc | KeyCode::Char('n') => {
+                *self.get_input_mode_mut() = InputMode::Normal;
+            }
+            _ => {}
+        };
+    }
+
+    fn on_up(&mut self) {
+        match self.get_focus() {
+            Focus::List => {
+                self.get_list_counter_mut().decrement();
+            }
+            Focus::Info => {
+                self.get_info_counter_mut().decrement();
+            }
+        }
+    }
+
+    fn on_down(&mut self) {
+        match self.get_focus() {
+            Focus::List => {
+                self.get_list_counter_mut().increment();
+            }
+            Focus::Info => {
+                self.get_info_counter_mut().increment();
+            }
+        }
+    }
+
+    fn toggle_focus(&mut self) {
+        // do nothing if the current entry is a new entry
+        if self.is_new_entry() {
+            return;
+        }
+        match self.get_focus() {
+            Focus::List => { *self.get_focus_mut() = Focus::Info; }
+            Focus::Info => { *self.get_focus_mut() = Focus::List; }
+        };
+    }
+
+    fn open_remove_mode(&mut self) {
+        if self.is_new_entry() {
+            return;
+        }
+        *self.get_input_mode_mut() = InputMode::Remove;
+    }
+
+    fn open_input_mode(&mut self) {
+        if self.get_focus() == &Focus::List {
+            return
+        };
+        *self.get_input_mode_mut() = InputMode::Editing;
+    }
      
 
 
@@ -274,6 +391,22 @@ fn render_create_new_dialog(f: &mut Frame, area: &Rect) {
         *area);
 }
 
+fn render_remove_dialog(f: &mut Frame) {
+    let window_width = f.size().width;
+    let text_area_width = (0.8 * (window_width as f32)) as u16;
+
+    let rect = centered_rect(f.size(), text_area_width, 3);
+    f.render_widget(Clear, rect); //this clears out the background
+    let text = "Are you sure you want to remove this entry? (y/n)";
+    f.render_widget(
+        Paragraph::new(text)
+        .block(Block::default().borders(Borders::ALL)
+               .border_type(BorderType::Rounded))
+        .style(Style::default().fg(Color::Red))
+        .alignment(Alignment::Center),
+        rect);
+}
+
 fn horizontal_split(area: &Rect, percentage: u16) -> Vec<Rect> {
     let layout = Layout::default()
         .direction(Direction::Horizontal)
@@ -300,4 +433,12 @@ fn horizontal_split_fixed(area: &Rect, fixed: u16) -> Vec<Rect> {
         )
         .split(*area);
     layout.to_vec()
+}
+
+fn centered_rect(area: Rect, width: u16, height: u16) -> Rect {
+    let horizontal = Layout::horizontal([width]).flex(Flex::Center);
+    let vertical = Layout::vertical([height]).flex(Flex::Center);
+    let [area] = vertical.areas(area);
+    let [area] = horizontal.areas(area);
+    area
 }

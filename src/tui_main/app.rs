@@ -44,8 +44,8 @@ pub enum Menu {
 #[derive(Debug, Default)]
 pub struct App<'a> {
     pub should_quit: bool,
-    pub cluster_state: ClusterState,
-    pub spawner_state: SpawnerState,
+    pub cluster_state: ClusterState<'a>,
+    pub spawner_state: SpawnerState<'a>,
     pub text_area: TextArea<'a>,
     pub focus: Focus,
     pub input_mode: InputMode,

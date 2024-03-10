@@ -1,22 +1,40 @@
+use color_eyre::eyre::Result;
+use tui_textarea::{TextArea};
+
 use crate::starter::{
     cluster::Cluster,
     counter::Counter,
     toml_list::TomlList,
-    state::{State, Focus}};
-use color_eyre::eyre::Result;
+    state::{State, Focus, InputMode}};
 
 const CLUSTER_FILE: &str = "clusters";
 const MAX_INFO_COUNTER: u32 = 4;
 
-#[derive(Debug, PartialEq)]
-pub struct ClusterState {
+#[derive(Debug)]
+pub struct ClusterState<'a> {
     pub list_counter: Counter,
     pub info_counter: Counter,
     entries: TomlList<Cluster>,
     focus: Focus,
+    input_mode: InputMode,
+    text_area: TextArea<'a>,
 }
 
-impl State<Cluster> for ClusterState {
+impl Default for ClusterState<'_> {
+    fn default() -> Self {
+        let entries: TomlList<Cluster> = TomlList::new();
+        ClusterState {
+            list_counter: Counter::new(1),
+            info_counter: Counter::new(MAX_INFO_COUNTER),
+            entries: entries,
+            focus: Focus::default(),
+            input_mode: InputMode::default(),
+            text_area: TextArea::default(),
+        }
+    }
+}
+
+impl State<Cluster> for ClusterState<'_> {
     fn get_list_counter(&self) -> &Counter {
         &self.list_counter
     }
@@ -53,20 +71,25 @@ impl State<Cluster> for ClusterState {
         &self.focus
     }
 
-}
-impl Default for ClusterState {
-    fn default() -> Self {
-        let entries: TomlList<Cluster> = TomlList::new();
-        ClusterState {
-            list_counter: Counter::new(1),
-            info_counter: Counter::new(MAX_INFO_COUNTER),
-            entries: entries,
-            focus: Focus::default(),
-        }
+    fn get_focus_mut(&mut self) -> &mut Focus {
+        &mut self.focus
     }
+
+    fn get_input_mode(&self) -> &InputMode {
+        &self.input_mode
+    }
+
+    fn get_input_mode_mut(&mut self) -> &mut InputMode {
+        &mut self.input_mode
+    }
+
+    fn get_text_area(&mut self) -> &mut TextArea {
+        &mut self.text_area
+    }
+
 }
 
-impl ClusterState {
+impl ClusterState<'_> {
 
     // =====================================================================
     //  CHECKERS

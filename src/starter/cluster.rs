@@ -76,6 +76,24 @@ impl Entry for Cluster {
             _ => {},
         }
     }
+
+    fn get_entry_names(&self) -> Vec<String> {
+        vec![
+            "Name: ".to_string(),
+            "Host: ".to_string(),
+            "User: ".to_string(),
+            "IdentityFile: ".to_string(),
+        ]
+    }
+
+    fn get_entry_values(&self) -> Vec<String> {
+        vec![
+            self.name.clone(),
+            self.host.clone(),
+            self.user.clone(),
+            self.identity_file.clone(),
+        ]
+    }
 }
 
 impl Cluster {
@@ -102,30 +120,6 @@ impl Cluster {
             identity_file: String::new(),
         }
     }
-
-    // =======================================================================
-    //       GETTERS AND SETTERS
-    // =======================================================================
-    pub fn get_entry_names(&self) -> Vec<String> {
-        vec![
-            "Name: ".to_string(),
-            "Host: ".to_string(),
-            "User: ".to_string(),
-            "IdentityFile: ".to_string(),
-        ]
-    }
-
-    pub fn get_entry_values(&self) -> Vec<String> {
-        vec![
-            self.name.clone(),
-            self.host.clone(),
-            self.user.clone(),
-            self.identity_file.clone(),
-        ]
-    }
-
-
-
 
     // =======================================================================
     //             EVALUATION FUNCTIONS

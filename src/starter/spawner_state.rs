@@ -3,7 +3,7 @@ use crate::starter::{
     spawner::Spawner,
     toml_list::TomlList,
     counter::Counter,
-    state::State};
+    state::{State, Focus}};
 use color_eyre::eyre::Result;
 
 const MAX_INFO_COUNTER: u32 = 6;
@@ -14,6 +14,7 @@ pub struct SpawnerState {
     pub list_counter: Counter,
     pub info_counter: Counter,
     entries: TomlList<Spawner>,
+    focus: Focus,
 }
 
 impl Default for SpawnerState {
@@ -24,6 +25,7 @@ impl Default for SpawnerState {
             list_counter: Counter::new(1),
             info_counter: Counter::new(MAX_INFO_COUNTER),
             entries: entries,
+            focus: Focus::default(),
         }
     }
 }
@@ -57,6 +59,13 @@ impl State<Spawner> for SpawnerState {
         self.cluster_name.as_str()
     }
 
+    fn get_titlename(&self) -> &str {
+        "Spawners: "
+    }
+
+    fn get_focus(&self) -> &Focus {
+        &self.focus
+    }
 }
 
 impl SpawnerState {

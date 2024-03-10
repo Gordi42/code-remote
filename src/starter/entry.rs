@@ -3,4 +3,6 @@ pub trait Entry {
     fn set_entry_name(&mut self, name: &str);
     fn get_value_from_index(&self, index: usize) -> String;
     fn set_value_from_index(&mut self, index: usize, value: &str);
+    fn get_entry_names(&self) -> Vec<String>;
+    fn get_entry_values(&self) -> Vec<String>;
 }

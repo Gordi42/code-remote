@@ -52,28 +52,8 @@ impl Entry for Spawner {
             _ => {},
         }
     }
-}
 
-impl Spawner {
-    // =======================================================================
-    //             CONSTRUCTORS
-    // =======================================================================
-    pub fn new() -> Spawner {
-        Spawner {
-            preset_name: String::from(""),
-            // cluster: cluster,
-            account: String::from(""),
-            partition: String::from(""),
-            time: String::from(""),
-            working_directory: String::from(""),
-            other_options: String::from(""),
-        }
-    }
-
-    // =======================================================================
-    //       GETTERS AND SETTERS
-    // =======================================================================
-    pub fn get_entry_names(&self) -> Vec<String> {
+    fn get_entry_names(&self) -> Vec<String> {
         vec![
             "Preset Name: ".to_string(),
             "Account: ".to_string(),
@@ -84,7 +64,7 @@ impl Spawner {
         ]
     }
 
-    pub fn get_entry_values(&self) -> Vec<String> {
+    fn get_entry_values(&self) -> Vec<String> {
         vec![
             self.preset_name.clone(),
             self.account.clone(),
@@ -93,6 +73,22 @@ impl Spawner {
             self.working_directory.clone(),
             self.other_options.clone(),
         ]
+    }
+}
+
+impl Spawner {
+    // =======================================================================
+    //             CONSTRUCTORS
+    // =======================================================================
+    pub fn new() -> Spawner {
+        Spawner {
+            preset_name: String::from(""),
+            account: String::from(""),
+            partition: String::from(""),
+            time: String::from(""),
+            working_directory: String::from(""),
+            other_options: String::from(""),
+        }
     }
 
     // =======================================================================

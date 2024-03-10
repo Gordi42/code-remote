@@ -1,11 +1,19 @@
 use serde::{Serialize, Deserialize};
 use color_eyre::eyre::Result;
 use std::default::Default;
+use ratatui::{prelude::*, widgets::*};
 
 use crate::starter::{
     entry::Entry,
     counter::Counter,
     toml_list::TomlList};
+
+#[derive(Debug, Default, PartialEq)]
+pub enum Focus {
+    #[default]
+    List,
+    Info,
+}
 
 pub trait State<T: Serialize + for<'a> Deserialize<'a> + PartialEq + Entry + Default> {
 // =======================================================================
@@ -18,6 +26,8 @@ pub trait State<T: Serialize + for<'a> Deserialize<'a> + PartialEq + Entry + Def
     fn get_entries(&self) -> &TomlList<T>;
     fn get_entries_mut(&mut self) -> &mut TomlList<T>;
     fn get_filename(&self) -> &str;
+    fn get_titlename(&self) -> &str;
+    fn get_focus(&self) -> &Focus;
 
 // =======================================================================
 //  DEFAULT METHODS
@@ -149,4 +159,145 @@ pub trait State<T: Serialize + for<'a> Deserialize<'a> + PartialEq + Entry + Def
         Ok(())
     }
 
+    // =======================================================================
+    //            Rendering
+    // =======================================================================
+    
+    fn render(&self, f: &mut Frame, area: &Rect) {
+        // split the area horizontally, such that the left hand side 
+        // shows a list of selectable entries, end the right hand 
+        // side information about the entry 
+        let layout = horizontal_split(area, 30);
+
+        // Render the list section.
+        let titlename = self.get_titlename();
+        let focus = self.get_focus();
+        let inner_area = render_border(
+            f, &layout[0], titlename, focus == &Focus::List);
+        let index = self.get_list_counter().get_value();
+        // create a list with the cluster names
+        render_list(f, &inner_area, 
+                    self.get_entry_names(), true, 
+                    index as usize, " > ");
+
+        // Render the info section.
+        if self.is_new_entry() {
+            render_create_new_dialog(f, &layout[1]);
+        } else {
+            self.render_info(f, &layout[1]);
+        }
+         
+    }
+
+    fn render_info(&self, f: &mut Frame, area: &Rect) {
+        let focus = self.get_focus();
+        let inner_area = render_border(
+            f, area, "Info: ", focus == &Focus::Info);
+
+        // create a layout for the inner area
+        let layout = horizontal_split_fixed(&inner_area, 15);
+
+        let enable_highlight = focus == &Focus::Info;
+
+        let entry = self.get_entry().unwrap();
+        let counter = self.get_info_counter().get_value() as usize;
+
+        render_list(f, &layout[0], entry.get_entry_names(), enable_highlight, 
+                    counter, "  ");
+        render_list(f, &layout[1], entry.get_entry_values(), enable_highlight, 
+                    counter, "  ");
+    }
+
+    // =======================================================================
+    //           INPUT HANDLING
+    // =======================================================================
+
+     
+
+
+
+}
+
+// =======================================================================
+//  UI Helper Functions
+// =======================================================================
+
+/// Render the borders of a widget and return the area inside the borders.
+fn render_border(f: &mut Frame, area: &Rect, title: &str,
+                     is_focused: bool) -> Rect {
+    let mut block = Block::default().title(title).borders(Borders::ALL)
+        .border_type(BorderType::Rounded);
+    if is_focused {
+        block = block.fg(Color::Blue);
+    }
+    // add a <tab> to the title if the widget is not focused
+    let block = match is_focused {
+        true => block,
+        false => block.title(block::Title::from("<tab>")
+                            .alignment(Alignment::Right)),
+    };
+    f.render_widget(block.clone(), *area);
+    block.inner(*area)
+}
+
+fn render_list(f: &mut Frame, area: &Rect, items: Vec<String>,
+                   enable_highlight: bool, counter: usize, 
+                   highlight_symbol: &str) {
+    let highlight_style = match enable_highlight {
+        true => Style::default().add_modifier(Modifier::BOLD)
+            .bg(Color::Blue).fg(Color::Black),
+        false => Style::default(),
+    };
+    // create the list state
+    let mut state = ListState::default();
+    state.select(Some(counter));
+    // create the list
+    let list = List::new(items)
+        .style(Style::default())
+        .highlight_style(highlight_style)
+        .highlight_symbol(highlight_symbol)
+        .repeat_highlight_symbol(true)
+        .direction(ListDirection::TopToBottom);
+
+    // render the list
+    f.render_stateful_widget(list, *area, &mut state);
+}
+
+fn render_create_new_dialog(f: &mut Frame, area: &Rect) {
+    let text = "Press `Enter` to create a new entry.";
+    f.render_widget(
+        Paragraph::new(text)
+            .block(Block::default().borders(Borders::ALL)
+            .border_type(BorderType::Rounded))
+            .style(Style::default())
+            .alignment(Alignment::Center),
+        *area);
+}
+
+fn horizontal_split(area: &Rect, percentage: u16) -> Vec<Rect> {
+    let layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(
+            [
+                Constraint::Percentage(percentage),
+                Constraint::Percentage(100 - percentage),
+            ]
+            .as_ref(),
+        )
+        .split(*area);
+    layout.to_vec()
+}
+
+fn horizontal_split_fixed(area: &Rect, fixed: u16) -> Vec<Rect> {
+    let layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(
+            [
+                Constraint::Length(fixed),
+                Constraint::Min(0),
+            ]
+            .as_ref(),
+        )
+        .split(*area);
+    layout.to_vec()
 }

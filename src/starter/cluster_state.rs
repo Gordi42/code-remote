@@ -2,7 +2,7 @@ use crate::starter::{
     cluster::Cluster,
     counter::Counter,
     toml_list::TomlList,
-    state::State};
+    state::{State, Focus}};
 use color_eyre::eyre::Result;
 
 const CLUSTER_FILE: &str = "clusters";
@@ -13,6 +13,7 @@ pub struct ClusterState {
     pub list_counter: Counter,
     pub info_counter: Counter,
     entries: TomlList<Cluster>,
+    focus: Focus,
 }
 
 impl State<Cluster> for ClusterState {
@@ -44,6 +45,14 @@ impl State<Cluster> for ClusterState {
         CLUSTER_FILE
     }
 
+    fn get_titlename(&self) -> &str {
+        "Clusters: "
+    }
+
+    fn get_focus(&self) -> &Focus {
+        &self.focus
+    }
+
 }
 impl Default for ClusterState {
     fn default() -> Self {
@@ -52,6 +61,7 @@ impl Default for ClusterState {
             list_counter: Counter::new(1),
             info_counter: Counter::new(MAX_INFO_COUNTER),
             entries: entries,
+            focus: Focus::default(),
         }
     }
 }

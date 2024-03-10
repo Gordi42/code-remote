@@ -1,4 +1,4 @@
-use crate::starter::cluster::Cluster;
+use crate::menus::cluster::Cluster;
 use crate::double_column_menu::entry::Entry;
 use ssh2::Session;
 use std::{io::Read, process::Command, default::Default};
@@ -11,7 +11,6 @@ const NODE_NAME_REGEX: &str = r"l\d{5}";
 #[derive(Debug, PartialEq, Serialize, Deserialize, Default)]
 pub struct Spawner {
     pub preset_name: String,
-    // pub cluster: &'a Cluster,
     pub account: String,
     pub partition: String,
     pub time: String,

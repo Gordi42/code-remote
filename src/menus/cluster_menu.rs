@@ -1,11 +1,11 @@
 use color_eyre::eyre::Result;
 use tui_textarea::{TextArea};
 
-use crate::starter::{cluster::Cluster};
+use crate::menus::{cluster::Cluster};
 use crate::double_column_menu::{
     counter::Counter,
     toml_list::TomlList,
-    state::{State, Focus, InputMode}};
+    state::{DoubleColumnMenu, Focus, InputMode}};
 
 use crate::tui_main::app::{Action};
 
@@ -13,7 +13,7 @@ const CLUSTER_FILE: &str = "clusters";
 const MAX_INFO_COUNTER: u32 = 4;
 
 #[derive(Debug)]
-pub struct ClusterState {
+pub struct ClusterMenu {
     pub list_counter: Counter,
     pub info_counter: Counter,
     entries: TomlList<Cluster>,
@@ -22,10 +22,10 @@ pub struct ClusterState {
     text_area: TextArea<'static>,
 }
 
-impl Default for ClusterState {
+impl Default for ClusterMenu {
     fn default() -> Self {
         let entries: TomlList<Cluster> = TomlList::new();
-        ClusterState {
+        ClusterMenu {
             list_counter: Counter::new(1),
             info_counter: Counter::new(MAX_INFO_COUNTER),
             entries: entries,
@@ -36,7 +36,7 @@ impl Default for ClusterState {
     }
 }
 
-impl State<Cluster> for ClusterState {
+impl DoubleColumnMenu<Cluster> for ClusterMenu {
     fn get_list_counter(&self) -> &Counter {
         &self.list_counter
     }
@@ -100,7 +100,7 @@ impl State<Cluster> for ClusterState {
 
 }
 
-impl ClusterState {
+impl ClusterMenu {
 
     // =====================================================================
     //  CHECKERS
@@ -118,30 +118,30 @@ impl ClusterState {
 mod tests {
     use super::*;
 
-    fn create_dummy_cluster_state() -> Result<ClusterState> {
-        let mut cluster_state = ClusterState::new_empty()?;
+    fn create_dummy_cluster_menu() -> Result<ClusterMenu> {
+        let mut cluster_menu = ClusterMenu::new_empty()?;
         let cluster = Cluster::new(
             "levante", "levante.dkrz.de", "u301533", "/home/silvano/.ssh/levante_key");
-        cluster_state.add_entry(cluster);
+        cluster_menu.add_entry(cluster);
         let cluster = Cluster::new("cluster2", "host2", "user2", "identity_file2");
-        cluster_state.add_entry(cluster);
-        Ok(cluster_state)
+        cluster_menu.add_entry(cluster);
+        Ok(cluster_menu)
     }
 
     #[test]
     fn test_get_entry() {
-        let mut cluster_state = create_dummy_cluster_state().unwrap();
-        let cluster = cluster_state.get_entry().unwrap();
+        let mut cluster_menu = create_dummy_cluster_menu().unwrap();
+        let cluster = cluster_menu.get_entry().unwrap();
         assert_eq!(cluster.name, "levante");
-        cluster_state.list_counter.increment();
-        let cluster = cluster_state.get_entry().unwrap();
+        cluster_menu.list_counter.increment();
+        let cluster = cluster_menu.get_entry().unwrap();
         assert_eq!(cluster.name, "cluster2");
     }
 
     #[test]
     fn test_save_entries() {
-        let cluster_state = create_dummy_cluster_state().unwrap();
-        cluster_state.save_entries().unwrap();
+        let cluster_menu = create_dummy_cluster_menu().unwrap();
+        cluster_menu.save_entries().unwrap();
         let home = std::env::var("HOME").unwrap();
         let file = format!("{}/.config/code-remote/clusters.toml", home);
         assert!(std::path::Path::new(&file).exists());
@@ -149,22 +149,22 @@ mod tests {
 
     #[test]
     fn test_load_entries() {
-        let dummy_cluster_state = create_dummy_cluster_state().unwrap();
-        dummy_cluster_state.save_entries().unwrap();
+        let dummy_cluster_menu = create_dummy_cluster_menu().unwrap();
+        dummy_cluster_menu.save_entries().unwrap();
 
-        let mut cluster_state = ClusterState::new_empty().unwrap();
-        cluster_state.load_entries().unwrap();
-        assert_eq!(cluster_state.entries.len(), 2);
-        assert_eq!(cluster_state.get_entry().unwrap().name, "levante");
+        let mut cluster_menu = ClusterMenu::new_empty().unwrap();
+        cluster_menu.load_entries().unwrap();
+        assert_eq!(cluster_menu.entries.len(), 2);
+        assert_eq!(cluster_menu.get_entry().unwrap().name, "levante");
     }
 
     #[test]
     fn test_is_new_entry() {
-        let mut cluster_state = create_dummy_cluster_state().unwrap();
-        assert!(! cluster_state.is_new_entry());
-        cluster_state.list_counter.increment();
-        assert!(! cluster_state.is_new_entry());
-        cluster_state.list_counter.increment();
-        assert!(cluster_state.is_new_entry());
+        let mut cluster_menu = create_dummy_cluster_menu().unwrap();
+        assert!(! cluster_menu.is_new_entry());
+        cluster_menu.list_counter.increment();
+        assert!(! cluster_menu.is_new_entry());
+        cluster_menu.list_counter.increment();
+        assert!(cluster_menu.is_new_entry());
     }
 }

@@ -7,7 +7,7 @@ use tui_main::{
     tui::Tui,
     update::update};
 
-pub mod starter;
+pub mod menus;
 pub mod tui_main;
 pub mod double_column_menu;
 

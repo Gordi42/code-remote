@@ -4,7 +4,7 @@ use ratatui::{
     widgets::{Paragraph},
 };
 use crate::tui_main::app::{App, Menu};
-use crate::double_column_menu::state::State;
+use crate::double_column_menu::state::DoubleColumnMenu;
 
 pub fn render(app: &mut App, f: &mut Frame) {
 
@@ -29,10 +29,10 @@ pub fn render(app: &mut App, f: &mut Frame) {
 
     match app.menu {
         Menu::Cluster => {
-            app.cluster_state.render(f, &outer_layout[0]);
+            app.cluster_menu.render(f, &outer_layout[0]);
         }
         Menu::Spawner => {
-            app.spawner_state.render(f, &outer_layout[0]);
+            app.spawner_menu.render(f, &outer_layout[0]);
         }
     }
 

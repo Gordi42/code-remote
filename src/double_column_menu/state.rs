@@ -26,7 +26,7 @@ pub enum InputMode {
     Remove,
 }
 
-pub trait State<T: Serialize + for<'a> Deserialize<'a> + PartialEq + Entry + Default> {
+pub trait DoubleColumnMenu<T: Serialize + for<'a> Deserialize<'a> + PartialEq + Entry + Default> {
 // =======================================================================
 //  METHODS TO IMPLEMENT
 // =======================================================================

@@ -1,8 +1,8 @@
 use color_eyre::Result;
-use crate::starter::{
-    cluster_state::ClusterState,
-    spawner_state::SpawnerState};
-use crate::double_column_menu::state::State;
+use crate::menus::{
+    cluster_menu::ClusterMenu,
+    spawner_menu::SpawnerMenu};
+use crate::double_column_menu::state::DoubleColumnMenu;
 
 use crossterm::{
     event::{DisableMouseCapture},
@@ -32,15 +32,15 @@ pub enum Menu {
 pub struct App {
     pub action: Action,
     pub should_quit: bool,
-    pub cluster_state: ClusterState,
-    pub spawner_state: SpawnerState,
+    pub cluster_menu: ClusterMenu,
+    pub spawner_menu: SpawnerMenu,
     pub menu: Menu,
 }
 
 impl App {
     pub fn new() -> Result<Self> {
         let mut new_app = Self::default();
-        new_app.cluster_state.load_entries()?;
+        new_app.cluster_menu.load_entries()?;
         Ok(new_app)
     }
 
@@ -55,20 +55,20 @@ impl App {
     }
 
     pub fn open_spawner_menu(&mut self) {
-        let cluster = self.cluster_state.get_entry().unwrap();
-        self.spawner_state.cluster_name = cluster.name.clone();
-        self.spawner_state.load_entries().unwrap();
+        let cluster = self.cluster_menu.get_entry().unwrap();
+        self.spawner_menu.cluster_name = cluster.name.clone();
+        self.spawner_menu.load_entries().unwrap();
         self.menu = Menu::Spawner;
     }
 
     pub fn start_spawner(&mut self) {
-        if self.cluster_state.is_new_entry() {
+        if self.cluster_menu.is_new_entry() {
             return;
         }
         self.quit();
         reset().expect("failed to reset the terminal");
-        let cluster = self.cluster_state.get_entry().unwrap();
-        self.spawner_state.spawn(&cluster).unwrap();
+        let cluster = self.cluster_menu.get_entry().unwrap();
+        self.spawner_menu.spawn(&cluster).unwrap();
     }
 
     pub fn handle_action(&mut self) {

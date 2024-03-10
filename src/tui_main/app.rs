@@ -2,7 +2,7 @@ use color_eyre::Result;
 use crate::menus::{
     cluster_menu::ClusterMenu,
     spawner_menu::SpawnerMenu};
-use crate::double_column_menu::state::DoubleColumnMenu;
+use crate::double_column_menu::double_column_menu::DoubleColumnMenu;
 use crate::tui_main::tui::Tui;
 
 
@@ -10,10 +10,10 @@ use crate::tui_main::tui::Tui;
 pub enum Action {
     #[default]
     None,
+    Quit,
     OpenClusterMenu,
     OpenSpawnerMenu,
     StartSpawner,
-    Quit,
 }
 
 #[derive(Debug, Default)]

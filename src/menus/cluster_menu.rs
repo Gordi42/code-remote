@@ -5,7 +5,7 @@ use crate::menus::{cluster::Cluster};
 use crate::double_column_menu::{
     counter::Counter,
     toml_list::TomlList,
-    state::{DoubleColumnMenu, Focus, InputMode}};
+    double_column_menu::{DoubleColumnMenu, Focus, InputMode}};
 
 use crate::tui_main::app::{Action};
 

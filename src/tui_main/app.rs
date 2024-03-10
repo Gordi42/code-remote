@@ -9,12 +9,11 @@ use crate::tui_main::tui::Tui;
 #[derive(Debug, Default)]
 pub enum Action {
     #[default]
-    Tick,
+    None,
     OpenClusterMenu,
     OpenSpawnerMenu,
     StartSpawner,
     Quit,
-    None,
 }
 
 #[derive(Debug, Default)]
@@ -39,8 +38,6 @@ impl App {
         new_app.cluster_menu.load_entries()?;
         Ok(new_app)
     }
-
-    pub fn tick(&self) {}
 
     pub fn quit(&mut self) {
         self.should_quit = true;
@@ -70,7 +67,6 @@ impl App {
     pub fn handle_action(&mut self) {
         match self.action {
             Action::Quit => { self.quit(); }
-            Action::Tick => { self.tick(); }
             Action::OpenClusterMenu => { self.open_cluster_menu(); }
             Action::OpenSpawnerMenu => { self.open_spawner_menu(); }
             Action::StartSpawner => { self.start_spawner(); }

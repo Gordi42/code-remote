@@ -1,7 +1,7 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use crate::tui_main::app::{App, Menu};
-use crate::starter::state::State;
+use crate::double_column_menu::state::State;
 
 pub fn update(app: &mut App, key_event: KeyEvent) {
     // Ctrl + C should always quit, regardless of the input mode

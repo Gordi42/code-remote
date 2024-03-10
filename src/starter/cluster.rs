@@ -7,7 +7,7 @@ use std::{
 use ssh2::{Session, Channel};
 use serde::{Serialize, Deserialize};
 use color_eyre::{eyre::eyre, Result};
-use crate::starter::entry::Entry;
+use crate::double_column_menu::entry::Entry;
 
 
 #[derive(Debug, PartialEq)]

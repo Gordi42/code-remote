@@ -1,6 +1,5 @@
-use crate::starter::{
-    cluster::Cluster,
-    entry::Entry};
+use crate::starter::cluster::Cluster;
+use crate::double_column_menu::entry::Entry;
 use ssh2::Session;
 use std::{io::Read, process::Command, default::Default};
 use regex::Regex;

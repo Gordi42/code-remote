@@ -4,7 +4,7 @@ use ratatui::{
     widgets::{Paragraph},
 };
 use crate::tui_main::app::{App, Menu};
-use crate::starter::state::State;
+use crate::double_column_menu::state::State;
 
 pub fn render(app: &mut App, f: &mut Frame) {
 

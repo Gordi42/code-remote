@@ -1,11 +1,12 @@
 use color_eyre::eyre::Result;
 use tui_textarea::{TextArea};
 
-use crate::starter::{
-    cluster::Cluster,
+use crate::starter::{cluster::Cluster};
+use crate::double_column_menu::{
     counter::Counter,
     toml_list::TomlList,
     state::{State, Focus, InputMode}};
+
 use crate::tui_main::app::{Action};
 
 const CLUSTER_FILE: &str = "clusters";

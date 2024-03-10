@@ -5,7 +5,7 @@ use ratatui::{prelude::*, widgets::*, layout::Flex};
 use crossterm::event::{KeyCode, KeyEvent};
 use tui_textarea::{TextArea};
 
-use crate::starter::{
+use crate::double_column_menu::{
     entry::Entry,
     counter::Counter,
     toml_list::TomlList};

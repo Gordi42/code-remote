@@ -1,8 +1,8 @@
 use color_eyre::Result;
 use crate::starter::{
     cluster_state::ClusterState,
-    spawner_state::SpawnerState,
-    state::State};
+    spawner_state::SpawnerState};
+use crate::double_column_menu::state::State;
 
 use crossterm::{
     event::{DisableMouseCapture},

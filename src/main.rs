@@ -9,6 +9,7 @@ use tui_main::{
 
 pub mod starter;
 pub mod tui_main;
+pub mod double_column_menu;
 
 
 

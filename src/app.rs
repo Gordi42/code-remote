@@ -3,7 +3,7 @@ use crate::menus::{
     cluster_menu::ClusterMenu,
     spawner_menu::SpawnerMenu};
 use crate::double_column_menu::double_column_menu::DoubleColumnMenu;
-use crate::tui_main::tui::Tui;
+use crate::tui::Tui;
 
 
 #[derive(Debug, Default)]

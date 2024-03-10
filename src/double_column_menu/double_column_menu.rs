@@ -9,7 +9,7 @@ use crate::double_column_menu::{
     entry::Entry,
     counter::Counter,
     toml_list::TomlList};
-use crate::tui_main::app::Action;
+use crate::app::Action;
 
 #[derive(Debug, Default, PartialEq)]
 pub enum Focus {

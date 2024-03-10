@@ -1,6 +1,6 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-use crate::tui_main::app::{App, Menu};
+use crate::app::{App, Menu};
 use crate::double_column_menu::double_column_menu::DoubleColumnMenu;
 
 pub fn update(app: &mut App, key_event: KeyEvent) {

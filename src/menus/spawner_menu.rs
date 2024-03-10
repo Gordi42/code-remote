@@ -9,7 +9,7 @@ use crate::double_column_menu::{
     counter::Counter,
     double_column_menu::{DoubleColumnMenu, Focus, InputMode}};
 
-use crate::tui_main::app::{Action};
+use crate::app::{Action};
 
 const MAX_INFO_COUNTER: u32 = 6;
 

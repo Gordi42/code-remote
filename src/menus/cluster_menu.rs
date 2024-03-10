@@ -7,7 +7,7 @@ use crate::double_column_menu::{
     toml_list::TomlList,
     double_column_menu::{DoubleColumnMenu, Focus, InputMode}};
 
-use crate::tui_main::app::{Action};
+use crate::app::{Action};
 
 const CLUSTER_FILE: &str = "clusters";
 const MAX_INFO_COUNTER: u32 = 4;

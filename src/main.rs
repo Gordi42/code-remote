@@ -1,15 +1,19 @@
 use color_eyre::eyre::Result;
 use ratatui::{backend::CrosstermBackend, Terminal};
 
-use tui_main::{
+use crate::{
     app::App,
     event::{Event, EventHandler},
     tui::Tui,
     update::update};
 
-pub mod menus;
-pub mod tui_main;
 pub mod double_column_menu;
+pub mod menus;
+pub mod app;
+pub mod event;
+pub mod ui;
+pub mod tui;
+pub mod update;
 
 
 

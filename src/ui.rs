@@ -3,7 +3,7 @@ use ratatui::{
     style::{Color, Style},
     widgets::{Paragraph},
 };
-use crate::tui_main::app::{App, Menu};
+use crate::app::{App, Menu};
 use crate::double_column_menu::double_column_menu::DoubleColumnMenu;
 
 pub fn render(app: &mut App, f: &mut Frame) {

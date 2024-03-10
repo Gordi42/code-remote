@@ -1,5 +1,5 @@
-use tui_textarea::{TextArea};
 use color_eyre::eyre::Result;
+use tui_textarea::{TextArea};
 
 use crate::starter::{
     cluster::Cluster,
@@ -7,21 +7,22 @@ use crate::starter::{
     toml_list::TomlList,
     counter::Counter,
     state::{State, Focus, InputMode}};
+use crate::tui_main::app::{Action};
 
 const MAX_INFO_COUNTER: u32 = 6;
 
 #[derive(Debug)]
-pub struct SpawnerState<'a> {
+pub struct SpawnerState {
     pub cluster_name: String,
     pub list_counter: Counter,
     pub info_counter: Counter,
     entries: TomlList<Spawner>,
     focus: Focus,
     input_mode: InputMode,
-    text_area: TextArea<'a>,
+    text_area: TextArea<'static>,
 }
 
-impl Default for SpawnerState<'_> {
+impl Default for SpawnerState {
     fn default() -> Self {
         let entries: TomlList<Spawner> = TomlList::new();
         SpawnerState {
@@ -36,7 +37,7 @@ impl Default for SpawnerState<'_> {
     }
 }
 
-impl<'a> State<Spawner> for SpawnerState<'a> {
+impl State<Spawner> for SpawnerState {
     fn get_list_counter(&self) -> &Counter {
         &self.list_counter
     }
@@ -85,12 +86,20 @@ impl<'a> State<Spawner> for SpawnerState<'a> {
         &mut self.input_mode
     }
 
-    fn get_text_area(&mut self) -> &mut TextArea<'a> {
+    fn get_text_area(&mut self) -> &mut TextArea<'static> {
         &mut self.text_area
+    }
+
+    fn action_right(&mut self, action: &mut Action) {
+        *action = Action::StartSpawner;
+    }
+
+    fn action_left(&mut self, action: &mut Action) {
+        *action = Action::OpenClusterMenu;
     }
 }
 
-impl SpawnerState<'_> {
+impl SpawnerState {
 
     // ======================================================================
     //  SPAWN OPERATIONS
@@ -102,6 +111,7 @@ impl SpawnerState<'_> {
         spawner.spawn(&mut session, cluster)?;
         Ok(())
     }
+
 
 }
 

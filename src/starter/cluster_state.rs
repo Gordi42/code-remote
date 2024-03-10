@@ -6,21 +6,22 @@ use crate::starter::{
     counter::Counter,
     toml_list::TomlList,
     state::{State, Focus, InputMode}};
+use crate::tui_main::app::{Action};
 
 const CLUSTER_FILE: &str = "clusters";
 const MAX_INFO_COUNTER: u32 = 4;
 
 #[derive(Debug)]
-pub struct ClusterState<'a> {
+pub struct ClusterState {
     pub list_counter: Counter,
     pub info_counter: Counter,
     entries: TomlList<Cluster>,
     focus: Focus,
     input_mode: InputMode,
-    text_area: TextArea<'a>,
+    text_area: TextArea<'static>,
 }
 
-impl Default for ClusterState<'_> {
+impl Default for ClusterState {
     fn default() -> Self {
         let entries: TomlList<Cluster> = TomlList::new();
         ClusterState {
@@ -34,7 +35,7 @@ impl Default for ClusterState<'_> {
     }
 }
 
-impl State<Cluster> for ClusterState<'_> {
+impl State<Cluster> for ClusterState {
     fn get_list_counter(&self) -> &Counter {
         &self.list_counter
     }
@@ -83,13 +84,22 @@ impl State<Cluster> for ClusterState<'_> {
         &mut self.input_mode
     }
 
-    fn get_text_area(&mut self) -> &mut TextArea {
+    fn get_text_area(&mut self) -> &mut TextArea<'static> {
         &mut self.text_area
+    }
+
+    fn action_right(&mut self, action: &mut Action) {
+        *action = Action::OpenSpawnerMenu;
+    }
+
+    fn action_left(&mut self, _action: &mut Action) {
+        // do nothing
+        return;
     }
 
 }
 
-impl ClusterState<'_> {
+impl ClusterState {
 
     // =====================================================================
     //  CHECKERS

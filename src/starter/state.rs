@@ -9,6 +9,7 @@ use crate::starter::{
     entry::Entry,
     counter::Counter,
     toml_list::TomlList};
+use crate::tui_main::app::Action;
 
 #[derive(Debug, Default, PartialEq)]
 pub enum Focus {
@@ -41,7 +42,9 @@ pub trait State<T: Serialize + for<'a> Deserialize<'a> + PartialEq + Entry + Def
     fn get_focus_mut(&mut self) -> &mut Focus;
     fn get_input_mode(&self) -> &InputMode;
     fn get_input_mode_mut(&mut self) -> &mut InputMode;
-    fn get_text_area(&mut self) -> &mut TextArea;
+    fn get_text_area(&mut self) -> &mut TextArea<'static>;
+    fn action_right(&mut self, action: &mut Action);
+    fn action_left(&mut self, action: &mut Action);
 
 // =======================================================================
 //  DEFAULT METHODS
@@ -181,12 +184,14 @@ pub trait State<T: Serialize + for<'a> Deserialize<'a> + PartialEq + Entry + Def
     //            Rendering
     // =======================================================================
 
-    fn render(&self, f: &mut Frame, area: &Rect) {
+    fn render(&mut self, f: &mut Frame, area: &Rect) {
         // always render the menu
         self.render_menu(f, area);
-        // render the remove dialog if the input mode is remove
-        if *self.get_input_mode() == InputMode::Remove {
-            render_remove_dialog(f);
+        // render additional widgets based on the input mode
+        match *self.get_input_mode() {
+            InputMode::Editing => self.render_editor(f),
+            InputMode::Remove => render_remove_dialog(f),
+            _ => {}
         }
     }
     
@@ -235,40 +240,53 @@ pub trait State<T: Serialize + for<'a> Deserialize<'a> + PartialEq + Entry + Def
                     counter, "  ");
     }
 
-    // fn render_editing(&self, f: &mut Frame, area: &Rect) {
-    //     let focus = self.get_focus();
-    //     let inner_area = render_border(
-    //         f, area, "Editing: ", focus == Focus::Info);
-    //     let text = self.get_input_buffer();
-    //     f.render_widget(
-    //         Paragraph::new(text)
-    //             .block(Block::default().borders(Borders::ALL)
-    //             .border_type(BorderType::Rounded))
-    //             .style(Style::default())
-    //             .alignment(Alignment::Center),
-    //         inner_area);
-    // }
+    fn render_editor(&mut self, f: &mut Frame) {
+        let window_width = f.size().width;
+        let text_area_width = (0.8 * (window_width as f32)) as u16;
+
+        let rect = centered_rect(f.size(), text_area_width, 3);
+
+        f.render_widget(Clear, rect); //this clears out the background
+
+        let text_area = self.get_text_area();
+        text_area.set_block(
+            Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Green))
+            .title("Edit entry: "),
+            );
+
+        text_area.set_style(
+            Style::default().fg(Color::Green));
+
+        f.render_widget(text_area.widget(), rect);
+    }
+
 
 
     // =======================================================================
     //           INPUT HANDLING
     // =======================================================================
 
-    fn input(&mut self, key_event: KeyEvent) {
+    fn input(&mut self, action: &mut Action, key_event: KeyEvent) {
         match self.get_input_mode() {
-            InputMode::Normal => self.input_normal_mode(key_event),
+            InputMode::Normal => self.input_normal_mode(action, key_event),
             InputMode::Remove => self.input_remove_mode(key_event),
-            _ => {}
-            // InputMode::Editing => self.input_editing(key_event),
+            InputMode::Editing => self.input_editing_mode(key_event),
         }
     }
 
-    fn input_normal_mode(&mut self, key_event: KeyEvent) {
+    fn input_normal_mode(&mut self, action: &mut Action, key_event: KeyEvent) {
         match key_event.code {
+            KeyCode::Char('q') => *action = Action::Quit,
             KeyCode::Tab => self.toggle_focus(),
             KeyCode::Down | KeyCode::Char('j') => self.on_down(),
             KeyCode::Up | KeyCode::Char('k') => self.on_up(),
+            KeyCode::Right | KeyCode::Char('l') => self.on_right(action),
+            KeyCode::Left | KeyCode::Char('h') => self.on_left(action),
+            KeyCode::Enter => self.on_enter(action),
             KeyCode::Char('d') => self.open_remove_mode(),
+            KeyCode::Char('i') => self.open_input_mode(),
             _ => {}
         };
     }
@@ -281,6 +299,40 @@ pub trait State<T: Serialize + for<'a> Deserialize<'a> + PartialEq + Entry + Def
             }
             _ => {}
         };
+    }
+
+    fn input_editing_mode(&mut self, key_event: KeyEvent) {
+        match key_event.code {
+            KeyCode::Enter => {
+                self.close_input_mode()
+            },
+            KeyCode::Esc => {
+                *self.get_input_mode_mut() = InputMode::Normal;
+            },
+            _ => {
+                self.get_text_area().input(key_event);
+            }
+        };
+    }
+
+    fn on_right(&mut self, action: &mut Action) {
+        // do nothing if the current entry is a new entry
+        if self.is_new_entry() {
+            return;
+        }
+        // do nothing if the focus is on the info section
+        if self.get_focus() == &Focus::Info {
+            return;
+        }
+        self.action_right(action);
+    }
+
+    fn on_left(&mut self, action: &mut Action) {
+        // do nothing if the focus is on the info section
+        if self.get_focus() == &Focus::Info {
+            return;
+        }
+        self.action_left(action);
     }
 
     fn on_up(&mut self) {
@@ -302,6 +354,22 @@ pub trait State<T: Serialize + for<'a> Deserialize<'a> + PartialEq + Entry + Def
             Focus::Info => {
                 self.get_info_counter_mut().increment();
             }
+        }
+    }
+
+    fn on_enter(&mut self, action: &mut Action) {
+        // check if the current entry is a new entry
+        if self.is_new_entry() {
+            self.add_new_entry();
+            *self.get_focus_mut() = Focus::Info;
+            self.get_info_counter_mut().reset();
+            self.open_input_mode();
+            return;
+        }
+        // otherwise, either open the input mode or perform the action
+        match self.get_focus() {
+            Focus::List => self.on_right(action),
+            Focus::Info => self.open_input_mode(),
         }
     }
 
@@ -327,7 +395,15 @@ pub trait State<T: Serialize + for<'a> Deserialize<'a> + PartialEq + Entry + Def
         if self.get_focus() == &Focus::List {
             return
         };
+        let buffer = self.get_input_buffer();
+        *self.get_text_area() = TextArea::from([buffer]);
         *self.get_input_mode_mut() = InputMode::Editing;
+    }
+
+    fn close_input_mode(&mut self) {
+        let buffer = self.get_text_area().lines().join("\n");
+        self.set_input_buffer(&buffer);
+        *self.get_input_mode_mut() = InputMode::Normal;
     }
      
 

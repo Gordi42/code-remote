@@ -1,6 +1,3 @@
-// ANCHOR: all
-
-// ANCHOR: tui_imports
 use std::{io, panic};
 
 use color_eyre::Result;
@@ -13,9 +10,7 @@ pub type CrosstermTerminal =
     ratatui::Terminal<ratatui::backend::CrosstermBackend<std::io::Stderr>>;
 
 use crate::tui_main::{app::App, event::EventHandler, ui};
-// ANCHOR_END: tui_imports
 
-// ANCHOR: tui
 /// Representation of a terminal user interface.
 ///
 /// It is responsible for setting up the terminal,
@@ -26,9 +21,7 @@ pub struct Tui {
     /// Terminal event handler.
     pub events: EventHandler,
 }
-// ANCHOR_END: tui
 
-// ANCHOR: tui_enter
 impl Tui {
     /// Constructs a new instance of [`Tui`].
     pub fn new(terminal: CrosstermTerminal, events: EventHandler) -> Self {
@@ -59,9 +52,7 @@ impl Tui {
         Ok(())
     }
 
-    // ANCHOR_END: tui_enter
 
-    // ANCHOR: tui_draw
     /// [`Draw`] the terminal interface by [`rendering`] the widgets.
     ///
     /// [`Draw`]: tui::Terminal::draw
@@ -70,14 +61,12 @@ impl Tui {
         self.terminal.draw(|frame| ui::render(app, frame))?;
         Ok(())
     }
-    // ANCHOR_END: tui_draw
 
-    // ANCHOR: tui_exit
     /// Resets the terminal interface.
     ///
     /// This function is also used for the panic hook to revert
     /// the terminal properties if unexpected errors occur.
-    fn reset() -> Result<()> {
+    pub fn reset() -> Result<()> {
         terminal::disable_raw_mode()?;
         crossterm::execute!(
             io::stderr(),
@@ -95,7 +84,5 @@ impl Tui {
         self.terminal.show_cursor()?;
         Ok(())
     }
-    // ANCHOR_END: tui_exit
 }
 
-// ANCHOR_END: all

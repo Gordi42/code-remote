@@ -3,12 +3,8 @@ use crate::menus::{
     cluster_menu::ClusterMenu,
     spawner_menu::SpawnerMenu};
 use crate::double_column_menu::state::DoubleColumnMenu;
+use crate::tui_main::tui::Tui;
 
-use crossterm::{
-    event::{DisableMouseCapture},
-    terminal::{self, LeaveAlternateScreen},
-};
-use std::io;
 
 #[derive(Debug, Default)]
 pub enum Action {
@@ -66,7 +62,7 @@ impl App {
             return;
         }
         self.quit();
-        reset().expect("failed to reset the terminal");
+        Tui::reset().expect("failed to reset the terminal");
         let cluster = self.cluster_menu.get_entry().unwrap();
         self.spawner_menu.spawn(&cluster).unwrap();
     }
@@ -83,17 +79,4 @@ impl App {
         self.action = Action::None;
     }
 
-}
-
-
-
-/// Resets the terminal interface.
-fn reset() -> Result<()> {
-    terminal::disable_raw_mode()?;
-    crossterm::execute!(
-        io::stderr(),
-        LeaveAlternateScreen,
-        DisableMouseCapture
-    )?;
-    Ok(())
 }

@@ -1,14 +1,15 @@
 use serde::{Serialize, Deserialize};
 use color_eyre::eyre::Result;
 use std::default::Default;
-use ratatui::{prelude::*, widgets::*, layout::Flex};
+use ratatui::{prelude::*, widgets::*};
 use crossterm::event::{KeyCode, KeyEvent};
 use tui_textarea::{TextArea};
 
 use crate::double_column_menu::{
     entry::Entry,
     counter::Counter,
-    toml_list::TomlList};
+    toml_list::TomlList,
+    render_helper_functions::*,};
 use crate::app::Action;
 
 #[derive(Debug, Default, PartialEq)]
@@ -225,8 +226,12 @@ pub trait DoubleColumnMenu<T: Serialize + for<'a> Deserialize<'a> + PartialEq + 
         let inner_area = render_border(
             f, area, "Info: ", focus == &Focus::Info);
 
+        // split the inner area vertically for the list in the top
+        // and control information in the bottom
+        let vertical_layout = vertical_split_fixed(&inner_area, 1);
+
         // create a layout for the inner area
-        let layout = horizontal_split_fixed(&inner_area, 15);
+        let layout = horizontal_split_fixed(&vertical_layout[0], 15);
 
         let enable_highlight = focus == &Focus::Info;
 
@@ -237,6 +242,19 @@ pub trait DoubleColumnMenu<T: Serialize + for<'a> Deserialize<'a> + PartialEq + 
                     counter, "  ");
         render_list(f, &layout[1], entry.get_entry_values(), enable_highlight, 
                     counter, "  ");
+
+        let control_info_text = match self.get_input_mode() {
+            InputMode::Editing => "Press `Enter` to save, `Esc` to cancel.",
+            _ => match self.get_focus() {
+                Focus::List => "Press `Enter` to select, 'd' to delete.",
+                Focus::Info => "Press `Enter` to edit.",
+            }
+        };
+
+        let control_info = Paragraph::new(control_info_text)
+            .style(Style::default().fg(Color::Cyan))
+            .alignment(Alignment::Center);
+        f.render_widget(control_info, vertical_layout[1]);
     }
 
     fn render_editor(&mut self, f: &mut Frame) {
@@ -405,115 +423,5 @@ pub trait DoubleColumnMenu<T: Serialize + for<'a> Deserialize<'a> + PartialEq + 
         *self.get_input_mode_mut() = InputMode::Normal;
     }
      
-
-
-
 }
 
-// =======================================================================
-//  UI Helper Functions
-// =======================================================================
-
-/// Render the borders of a widget and return the area inside the borders.
-fn render_border(f: &mut Frame, area: &Rect, title: &str,
-                     is_focused: bool) -> Rect {
-    let mut block = Block::default().title(title).borders(Borders::ALL)
-        .border_type(BorderType::Rounded);
-    if is_focused {
-        block = block.fg(Color::Blue);
-    }
-    // add a <tab> to the title if the widget is not focused
-    let block = match is_focused {
-        true => block,
-        false => block.title(block::Title::from("<tab>")
-                            .alignment(Alignment::Right)),
-    };
-    f.render_widget(block.clone(), *area);
-    block.inner(*area)
-}
-
-fn render_list(f: &mut Frame, area: &Rect, items: Vec<String>,
-                   enable_highlight: bool, counter: usize, 
-                   highlight_symbol: &str) {
-    let highlight_style = match enable_highlight {
-        true => Style::default().add_modifier(Modifier::BOLD)
-            .bg(Color::Blue).fg(Color::Black),
-        false => Style::default(),
-    };
-    // create the list state
-    let mut state = ListState::default();
-    state.select(Some(counter));
-    // create the list
-    let list = List::new(items)
-        .style(Style::default())
-        .highlight_style(highlight_style)
-        .highlight_symbol(highlight_symbol)
-        .repeat_highlight_symbol(true)
-        .direction(ListDirection::TopToBottom);
-
-    // render the list
-    f.render_stateful_widget(list, *area, &mut state);
-}
-
-fn render_create_new_dialog(f: &mut Frame, area: &Rect) {
-    let text = "Press `Enter` to create a new entry.";
-    f.render_widget(
-        Paragraph::new(text)
-            .block(Block::default().borders(Borders::ALL)
-            .border_type(BorderType::Rounded))
-            .style(Style::default())
-            .alignment(Alignment::Center),
-        *area);
-}
-
-fn render_remove_dialog(f: &mut Frame) {
-    let window_width = f.size().width;
-    let text_area_width = (0.8 * (window_width as f32)) as u16;
-
-    let rect = centered_rect(f.size(), text_area_width, 3);
-    f.render_widget(Clear, rect); //this clears out the background
-    let text = "Are you sure you want to remove this entry? (y/n)";
-    f.render_widget(
-        Paragraph::new(text)
-        .block(Block::default().borders(Borders::ALL)
-               .border_type(BorderType::Rounded))
-        .style(Style::default().fg(Color::Red))
-        .alignment(Alignment::Center),
-        rect);
-}
-
-fn horizontal_split(area: &Rect, percentage: u16) -> Vec<Rect> {
-    let layout = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints(
-            [
-                Constraint::Percentage(percentage),
-                Constraint::Percentage(100 - percentage),
-            ]
-            .as_ref(),
-        )
-        .split(*area);
-    layout.to_vec()
-}
-
-fn horizontal_split_fixed(area: &Rect, fixed: u16) -> Vec<Rect> {
-    let layout = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints(
-            [
-                Constraint::Length(fixed),
-                Constraint::Min(0),
-            ]
-            .as_ref(),
-        )
-        .split(*area);
-    layout.to_vec()
-}
-
-fn centered_rect(area: Rect, width: u16, height: u16) -> Rect {
-    let horizontal = Layout::horizontal([width]).flex(Flex::Center);
-    let vertical = Layout::vertical([height]).flex(Flex::Center);
-    let [area] = vertical.areas(area);
-    let [area] = horizontal.areas(area);
-    area
-}

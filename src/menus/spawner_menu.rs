@@ -1,9 +1,6 @@
-use color_eyre::eyre::Result;
 use tui_textarea::{TextArea};
 
-use crate::menus::{
-    cluster::Cluster,
-    spawner::Spawner};
+use crate::menus::spawner::Spawner;
 use crate::double_column_menu::{
     toml_list::TomlList,
     counter::Counter,
@@ -101,22 +98,6 @@ impl DoubleColumnMenu<Spawner> for SpawnerMenu {
     }
 }
 
-impl SpawnerMenu {
-
-    // ======================================================================
-    //  SPAWN OPERATIONS
-    // ======================================================================
-
-    pub fn spawn(&self, cluster: &Cluster) -> Result<()> {
-        let spawner = self.get_entry()?;
-        let mut session = cluster.create_session()?;
-        spawner.spawn(&mut session, cluster)?;
-        Ok(())
-    }
-
-
-}
-
 // =======================================================================
 //           TESTS
 // =======================================================================
@@ -127,22 +108,10 @@ mod tests {
 
     #[test]
     fn test_add_entry() {
-        let mut spawner_menu = SpawnerMenu::new_empty();
-        let spawner = Spawner::new();
+        let mut spawner_menu = SpawnerMenu::default();
+        let spawner = Spawner::default();
         spawner_menu.add_entry(spawner);
         assert_eq!(spawner_menu.entries.len(), 1);
     }
 
-    #[test]
-    fn test_save_entries() {
-        let mut cluster = Cluster::new_empty();
-        cluster.name = "test_cluster".to_string();
-        let mut spawner_menu = SpawnerMenu::new_empty();
-        let spawner = Spawner::new();
-        spawner_menu.add_entry(spawner);
-        spawner_menu.save_entries(&cluster).unwrap();
-        let home = std::env::var("HOME").unwrap();
-        let file = format!("{}/.config/code-remote/test_cluster.toml", home);
-        assert!(std::path::Path::new(&file).exists());
-    }
 }

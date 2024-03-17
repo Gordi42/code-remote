@@ -28,16 +28,21 @@ impl Tui {
         Self { terminal, events }
     }
 
-    /// Initializes the terminal interface.
-    ///
-    /// It enables the raw mode and sets terminal properties.
-    pub fn enter(&mut self) -> Result<()> {
+    pub fn enter_alternate_screen() -> Result<()> {
         terminal::enable_raw_mode()?;
         crossterm::execute!(
             io::stderr(),
             EnterAlternateScreen,
             EnableMouseCapture
         )?;
+        Ok(())
+    }
+
+    /// Initializes the terminal interface.
+    ///
+    /// It enables the raw mode and sets terminal properties.
+    pub fn enter(&mut self) -> Result<()> {
+        Self::enter_alternate_screen()?;
 
         // Define a custom panic hook to reset the terminal properties.
         // This way, you won't have your terminal messed up if an unexpected error happens.
@@ -58,7 +63,13 @@ impl Tui {
     /// [`Draw`]: tui::Terminal::draw
     /// [`rendering`]: crate::ui:render
     pub fn draw(&mut self, app: &mut App) -> Result<()> {
-        self.terminal.draw(|frame| ui::render(app, frame))?;
+        if app.should_redraw {
+            self.terminal.clear()?;
+            app.should_redraw = false;
+        }
+        self.terminal.draw(|frame| {
+            ui::render(app, frame)
+        })?;
         Ok(())
     }
 

@@ -1,14 +1,20 @@
 use std::{
-    path::Path,
     fs::{File, OpenOptions},
     net::TcpStream,
     io::{self, Read, prelude::*} 
 };
-use ssh2::{Session, Channel};
+use ssh2::Session;
 use serde::{Serialize, Deserialize};
-use color_eyre::{eyre::eyre, Result};
+use color_eyre::Result;
 use crate::double_column_menu::entry::Entry;
 
+#[derive(Debug, Default, PartialEq)]
+pub enum SessionType {
+    #[default]
+    IdentityFile,
+    Passphrase,
+    Password,
+}
 
 #[derive(Debug, PartialEq)]
 pub enum ClusterError {
@@ -98,66 +104,15 @@ impl Entry for Cluster {
 
 impl Cluster {
     // =======================================================================
-    //             CONSTRUCTORS
+    //            CONSTRUCTOR
     // =======================================================================
-    pub fn new(name: &str, 
-           host: &str, 
-           user: &str, 
-           identity_file: &str) -> Cluster {
+    pub fn new(name: &str, host: &str, user: &str, identity_file: &str) -> Cluster {
         Cluster {
             name: name.to_string(),
             host: host.to_string(),
             user: user.to_string(),
             identity_file: identity_file.to_string(),
         }
-    }
-
-    pub fn new_empty() -> Cluster {
-        Cluster {
-            name: String::new(),
-            host: String::new(),
-            user: String::new(),
-            identity_file: String::new(),
-        }
-    }
-
-    // =======================================================================
-    //             EVALUATION FUNCTIONS
-    // =======================================================================
-
-    pub fn cluster_is_valid(&self) -> Result<()> {
-        if self.name.is_empty() {
-            return Err(eyre!(ClusterError::EmptyName));
-        }
-        if self.host.is_empty() {
-            return Err(eyre!(ClusterError::EmptyHost));
-        }
-        if self.user.is_empty() {
-            return Err(eyre!(ClusterError::EmptyUser));
-        }
-        if self.identity_file.is_empty() {
-            return Err(eyre!(ClusterError::EmptyIdentityFile));
-        }
-        if !Path::new(&self.identity_file).exists() {
-            return Err(eyre!(ClusterError::NoneExistingIdentityFile));
-        }
-        Ok(())
-    }
-
-    /// Test if a connection to the cluster can be established
-    pub fn test_connection(&self) -> Result<bool>{
-
-        let private_key_str = self.read_private_key()?;
-        let tcp = TcpStream::connect(format!("{}:22", &self.host))?;
-        let mut sess = Session::new()?;
-
-        // Associate the session with the TCP stream
-        sess.set_tcp_stream(tcp);
-        sess.handshake()?;
-
-        // Try to authenticate using the private key
-        sess.userauth_pubkey_memory(&self.user, None, &private_key_str, None)?;
-        Ok(true)
     }
 
     // =======================================================================
@@ -180,9 +135,14 @@ impl Cluster {
     
     /// Format the cluster entry for the ssh config file
     fn format_config_entry(&self) -> String {
-        format!(
-            "Host {}\n    HostName {}\n    User {}\n    IdentityFile {}",
-            self.name, self.host, self.user, self.identity_file)
+        let mut entry = String::new();
+        entry.push_str(&format!("Host cr-{}\n", self.name));
+        entry.push_str(&format!("    HostName {}\n", self.host));
+        entry.push_str(&format!("    User {}\n", self.user));
+        if !self.identity_file.is_empty() {
+            entry.push_str(&format!("    IdentityFile {}\n", self.identity_file));
+        }
+        entry
     }
 
     /// Check if a given pattern is in a file
@@ -220,24 +180,34 @@ impl Cluster {
         Ok(private_key_str)
     }
 
-    /// Create a new session
-    pub fn create_session(&self) -> Result<Session> {
-        self.test_connection()?;
-        let private_key_str = self.read_private_key()?;
+    pub fn create_session(&self, session_type: &SessionType, password: &str) -> Result<Session> {
+        // read the private key from the identity file
+        let private_key = match session_type {
+            SessionType::IdentityFile => self.read_private_key()?,
+            SessionType::Passphrase => self.read_private_key()?,
+            _ => String::new(),
+        };
+        // Connect to the Host (check if the host is reachable)
         let tcp = TcpStream::connect(format!("{}:22", &self.host))?;
+        // Create a new session
         let mut sess = Session::new()?;
-        // Associate the session with the TCP stream
         sess.set_tcp_stream(tcp);
         sess.handshake()?;
-        // Try to authenticate using the private key
-        sess.userauth_pubkey_memory(&self.user, None, &private_key_str, None)?;
+        // Try to authenticate
+        match session_type {
+            SessionType::IdentityFile => {
+                sess.userauth_pubkey_memory(
+                    &self.user, None, &private_key, None)
+            },
+            SessionType::Passphrase => {
+                sess.userauth_pubkey_memory(
+                    &self.user, None, &private_key, Some(password))
+            },
+            SessionType::Password => {
+                sess.userauth_password(&self.user, &password)
+            },
+        }?;
         Ok(sess)
-    }
-
-    /// Create a new channel
-    pub fn create_channel(&self) -> Result<Channel> {
-        let sess = self.create_session()?;
-        Ok(sess.channel_session()?)
     }
 
     /// Execute a command and forward the output to the terminal
@@ -262,6 +232,7 @@ impl Cluster {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::Path;
 
     #[test]
     fn create_tmp_file() {
@@ -282,84 +253,6 @@ mod tests {
         assert_eq!(cluster.host, "localhost");
         assert_eq!(cluster.user, "root");
         assert_eq!(cluster.identity_file, "/tmp/id_rsa");
-    }
-
-    #[test]
-    fn test_new_cluster_empty_name() {
-        let cluster = Cluster::new("", "localhost", "root", "/tmp/id_rsa");
-        let is_valid = cluster.cluster_is_valid();
-        assert!(is_valid.is_err());
-    }
-
-    #[test]
-    fn test_new_cluster_empty_host() {
-        let cluster = Cluster::new("test", "", "root", "/tmp/id_rsa");
-        let is_valid = cluster.cluster_is_valid();
-        assert!(is_valid.is_err());
-    }
-
-    #[test]
-    fn test_new_cluster_empty_user() {
-        let cluster = Cluster::new("test", "localhost", "", "/tmp/id_rsa");
-        let is_valid = cluster.cluster_is_valid();
-        assert!(is_valid.is_err());
-    }
-
-    #[test]
-    fn test_new_cluster_empty_identity_file() {
-        let cluster = Cluster::new("test", "localhost", "root", "");
-        let is_valid = cluster.cluster_is_valid();
-        assert!(is_valid.is_err());
-    }
-
-    #[test]
-    fn test_new_cluster_none_existing_identity_file() {
-        let cluster = Cluster::new(
-            "test", "localhost", "root", "this_file_does_not_exist");
-        let is_valid = cluster.cluster_is_valid();
-        assert!(is_valid.is_err());
-    }
-
-    // Test if a connection to the cluster can be established
-    #[test]
-    fn test_test_connection() {
-        let cluster = Cluster::new(
-            "levante", 
-            "levante.dkrz.de", 
-            "u301533", 
-            "/home/silvano/.ssh/levante_key");
-        assert!(cluster.test_connection().unwrap());
-    }
-
-    #[test]
-    fn test_test_connection_wrong_host() {
-        let cluster = Cluster::new(
-            "levante", 
-            "wrong_host", 
-            "u301533", 
-            "/home/silvano/.ssh/levante_key");
-        assert!(cluster.test_connection().is_err());
-    }
-
-    #[test]
-    fn test_test_connection_wrong_user() {
-        let cluster = Cluster::new(
-            "levante", 
-            "levante.dkrz.de", 
-            "wrong_user", 
-            "/home/silvano/.ssh/levante_key");
-        assert!(cluster.test_connection().is_err());
-    }
-
-    #[test]
-    fn test_test_connection_wrong_identity_file() {
-        create_tmp_file();
-        let cluster = Cluster::new(
-            "levante", 
-            "levante.dkrz.de", 
-            "u301533", 
-            "/tmp/id_rsa");
-        assert!(cluster.test_connection().is_err());
     }
 
 }

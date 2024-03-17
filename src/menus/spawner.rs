@@ -8,7 +8,7 @@ use serde::{Serialize, Deserialize};
 
 const NODE_NAME_REGEX: &str = r"l\d{5}";
 
-#[derive(Debug, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Spawner {
     pub preset_name: String,
     pub account: String,
@@ -16,6 +16,19 @@ pub struct Spawner {
     pub time: String,
     pub working_directory: String,
     pub other_options: String,
+}
+
+impl Default for Spawner {
+    fn default() -> Spawner {
+        Spawner {
+            preset_name: String::from(""),
+            account: String::from(""),
+            partition: String::from(""),
+            time: String::from("01:00:00"),
+            working_directory: String::from(""),
+            other_options: String::from(""),
+        }
+    }
 }
 
 impl Entry for Spawner {
@@ -76,16 +89,23 @@ impl Entry for Spawner {
 
 impl Spawner {
     // =======================================================================
-    //             CONSTRUCTORS
+    //           CONSTRUCTOR
     // =======================================================================
-    pub fn new() -> Spawner {
+    pub fn new(
+        preset_name: &str,
+        account: &str,
+        partition: &str,
+        time: &str,
+        working_directory: &str,
+        other_options: &str,
+    ) -> Spawner {
         Spawner {
-            preset_name: String::from(""),
-            account: String::from(""),
-            partition: String::from(""),
-            time: String::from(""),
-            working_directory: String::from(""),
-            other_options: String::from(""),
+            preset_name: preset_name.to_string(),
+            account: account.to_string(),
+            partition: partition.to_string(),
+            time: time.to_string(),
+            working_directory: working_directory.to_string(),
+            other_options: other_options.to_string(),
         }
     }
 
@@ -152,7 +172,7 @@ impl Spawner {
         }
 
         let remote_argument = format!(
-            "vscode-remote://ssh-remote+{}/{}", node_alias, code_wd);
+            "vscode-remote://ssh-remote+cr-{}/{}", node_alias, code_wd);
         Command::new("code")
             .arg("--folder-uri").arg(remote_argument)
             .output()
@@ -166,13 +186,15 @@ impl Spawner {
 
     pub fn format_config_entry(&self, node_name: &str, cluster: &Cluster) -> String {
         let host = format!("{}-{}", cluster.name, node_name);
-        format!(
-            "Host {}\n    HostName {}\n    User {}\n    IdentityFile {}\n    ProxyJump {}",
-            host, 
-            node_name, 
-            cluster.user, 
-            cluster.identity_file, 
-            cluster.name)
+        let mut entry = String::new();
+        entry.push_str(format!("Host cr-{}\n", host).as_str());
+        entry.push_str(format!("    HostName {}\n", node_name).as_str());
+        entry.push_str(format!("    User {}\n", cluster.user).as_str());
+        if !cluster.identity_file.is_empty() {
+            entry.push_str(format!("    IdentityFile {}\n", cluster.identity_file).as_str());
+        }
+        entry.push_str(format!("    ProxyJump cr-{}\n", cluster.name).as_str());
+        entry
     }
 
     pub fn clear_known_host(&self, node_alias: &str) -> Result<()> {

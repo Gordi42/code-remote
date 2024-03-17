@@ -1,4 +1,3 @@
-use color_eyre::eyre::Result;
 use tui_textarea::{TextArea};
 
 use crate::menus::{cluster::Cluster};
@@ -100,26 +99,14 @@ impl DoubleColumnMenu<Cluster> for ClusterMenu {
 
 }
 
-impl ClusterMenu {
-
-    // =====================================================================
-    //  CHECKERS
-    // =====================================================================
-
-    pub fn cluster_is_valid(self) -> Result<()> {
-        let cluster = self.get_entry()?;
-        cluster.cluster_is_valid()
-    }
-
-}
-
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use color_eyre::Result;
 
     fn create_dummy_cluster_menu() -> Result<ClusterMenu> {
-        let mut cluster_menu = ClusterMenu::new_empty()?;
+        let mut cluster_menu = ClusterMenu::default();
         let cluster = Cluster::new(
             "levante", "levante.dkrz.de", "u301533", "/home/silvano/.ssh/levante_key");
         cluster_menu.add_entry(cluster);
@@ -136,26 +123,6 @@ mod tests {
         cluster_menu.list_counter.increment();
         let cluster = cluster_menu.get_entry().unwrap();
         assert_eq!(cluster.name, "cluster2");
-    }
-
-    #[test]
-    fn test_save_entries() {
-        let cluster_menu = create_dummy_cluster_menu().unwrap();
-        cluster_menu.save_entries().unwrap();
-        let home = std::env::var("HOME").unwrap();
-        let file = format!("{}/.config/code-remote/clusters.toml", home);
-        assert!(std::path::Path::new(&file).exists());
-    }
-
-    #[test]
-    fn test_load_entries() {
-        let dummy_cluster_menu = create_dummy_cluster_menu().unwrap();
-        dummy_cluster_menu.save_entries().unwrap();
-
-        let mut cluster_menu = ClusterMenu::new_empty().unwrap();
-        cluster_menu.load_entries().unwrap();
-        assert_eq!(cluster_menu.entries.len(), 2);
-        assert_eq!(cluster_menu.get_entry().unwrap().name, "levante");
     }
 
     #[test]

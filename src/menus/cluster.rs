@@ -7,6 +7,8 @@ use ssh2::Session;
 use serde::{Serialize, Deserialize};
 use color_eyre::Result;
 use crate::double_column_menu::entry::Entry;
+use std::fs;
+use regex::Regex;
 
 #[derive(Debug, Default, PartialEq)]
 pub enum SessionType {
@@ -119,53 +121,48 @@ impl Cluster {
     //            FILE OPERATIONS
     // =======================================================================
     
-    /// Get the $HOME/.ssh/config file
-    /// if does not exist, create it and return it
-    pub fn get_config_file(&self) -> Result<File> {
-        let home = std::env::var("HOME")?;
-        let ssh_config = format!("{}/.ssh/config", home);
-        let file = OpenOptions::new()
-            .write(true)
-            .read(true)
-            .append(true)
-            .create(true)
-            .open(&ssh_config)?;
-        Ok(file)
-    }
-    
     /// Format the cluster entry for the ssh config file
     fn format_config_entry(&self) -> String {
         let mut entry = String::new();
+        entry.push_str(&format!("# code-remote: start {}\n", self.name));
         entry.push_str(&format!("Host cr-{}\n", self.name));
         entry.push_str(&format!("    HostName {}\n", self.host));
         entry.push_str(&format!("    User {}\n", self.user));
         if !self.identity_file.is_empty() {
             entry.push_str(&format!("    IdentityFile {}\n", self.identity_file));
         }
+        entry.push_str(&format!("# code-remote: end {}", self.name));
         entry
-    }
-
-    /// Check if a given pattern is in a file
-    fn is_pattern_in_file(&self, file: &mut File, pattern: &str) -> Result<bool> {
-        let mut file_contents = String::new();
-        file.read_to_string(&mut file_contents)?;
-        Ok(file_contents.contains(pattern))
-    }
-
-    /// Check if a entry is in the ssh config file 
-    /// if not => add it
-    pub fn append_ssh_config(&self, entry: &str) -> Result<()> {
-        let mut file = self.get_config_file()?;
-        if !(self.is_pattern_in_file(&mut file, entry)?) {
-            writeln!(file, "\n{}", entry)?;
-        }
-        Ok(())
     }
 
     /// Add the cluster to the ssh config file
     pub fn add_cluster_to_ssh_config(&self) -> Result<()>{
+        // Read the contents of the .ssh/config file
+        let home = std::env::var("HOME")?;
+        let config_file_path = format!("{}/.ssh/config", home);
+        let config_content = fs::read_to_string(&config_file_path)?;
+
+        // Define the regex pattern to match the start and end of the code remote entry
+        let pattern = format!(r"(?ms)^# code-remote: start {}\n.*?# code-remote: end {}\s*", self.name, self.name);
+
+        // Create a regex object
+        let re = Regex::new(&pattern)?;
+
+        // Replace the code remote entry with an empty string
+        let modified_content = re.replace_all(&config_content, "").to_string();
+
+        // Write the modified content back to the file
+        fs::write(&config_file_path, modified_content)?;
+        
         let entry = self.format_config_entry();
-        self.append_ssh_config(&entry)
+        let mut file = OpenOptions::new()
+            .write(true)
+            .read(true)
+            .append(true)
+            .create(true)
+            .open(&config_file_path)?;
+        writeln!(file, "{}", entry)?;
+        Ok(())
     }
     
     // =======================================================================

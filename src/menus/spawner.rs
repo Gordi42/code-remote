@@ -5,6 +5,8 @@ use std::{io::Read, process::Command, default::Default};
 use regex::Regex;
 use color_eyre::eyre::Result;
 use serde::{Serialize, Deserialize};
+use std::{fs, fs::OpenOptions, io::Write};
+
 
 const NODE_NAME_REGEX: &str = r"l\d{5}";
 
@@ -122,14 +124,13 @@ impl Spawner {
             node_name = self.get_node_name(session)?;
         }
         let node_name = node_name.unwrap(); 
-        let node_alias = format!("{}-{}", cluster.name, node_name);
         // append teh node name to the ssh config file
-        let config_entry = self.format_config_entry(&node_name, cluster);
-        cluster.append_ssh_config(&config_entry)?;
+        self.add_cluster_to_ssh_config(&node_name, cluster)?;
+
 
         // clear the node from the known hosts file
-        self.clear_known_host(&node_alias)?;
-        self.spawn_vscode(&node_alias, session)?;
+        self.clear_known_host(&self.preset_name)?;
+        self.spawn_vscode(&self.preset_name, session)?;
         Ok(())
     }
 
@@ -185,16 +186,47 @@ impl Spawner {
     // =======================================================================
 
     pub fn format_config_entry(&self, node_name: &str, cluster: &Cluster) -> String {
-        let host = format!("{}-{}", cluster.name, node_name);
         let mut entry = String::new();
-        entry.push_str(format!("Host cr-{}\n", host).as_str());
+        entry.push_str(&format!("# code-remote: start {}\n", self.preset_name));
+        entry.push_str(format!("Host cr-{}\n", self.preset_name).as_str());
         entry.push_str(format!("    HostName {}\n", node_name).as_str());
         entry.push_str(format!("    User {}\n", cluster.user).as_str());
         if !cluster.identity_file.is_empty() {
             entry.push_str(format!("    IdentityFile {}\n", cluster.identity_file).as_str());
         }
         entry.push_str(format!("    ProxyJump cr-{}\n", cluster.name).as_str());
+        entry.push_str(&format!("# code-remote: end {}", self.preset_name));
         entry
+    }
+
+    pub fn add_cluster_to_ssh_config(&self, node_name: &str, cluster: &Cluster) -> Result<()> {
+        // Read the contents of the .ssh/config file
+        let home = std::env::var("HOME")?;
+        let config_file_path = format!("{}/.ssh/config", home);
+        let config_content = fs::read_to_string(&config_file_path)?;
+
+        // Define the regex pattern to match the start and end of the code remote entry
+        let pattern = format!(r"(?ms)^# code-remote: start {}\n.*?# code-remote: end {}\s*"
+                              , self.preset_name, self.preset_name);
+
+        // Create a regex object
+        let re = Regex::new(&pattern)?;
+
+        // Replace the code remote entry with an empty string
+        let modified_content = re.replace_all(&config_content, "").to_string();
+
+        // Write the modified content back to the file
+        fs::write(&config_file_path, modified_content)?;
+        
+        let entry = self.format_config_entry(node_name, cluster);
+        let mut file = OpenOptions::new()
+            .write(true)
+            .read(true)
+            .append(true)
+            .create(true)
+            .open(&config_file_path)?;
+        writeln!(file, "{}", entry)?;
+        Ok(())
     }
 
     pub fn clear_known_host(&self, node_alias: &str) -> Result<()> {

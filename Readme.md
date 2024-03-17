@@ -30,7 +30,7 @@ open the command palette with `Cmd+Shift+P` and search for:
 ```
 Shell Command: Install 'code' command in PATH
 ```
-- 'ssh' installed, and a config file under `~/.ssh/config`. You can create the config file by executing 
+- 'ssh' and 'ssh-keygen' installed, and a config file under `~/.ssh/config`. You can create the config file by executing 
 ```bash
 touch ~/.ssh/config
 ```

@@ -129,7 +129,8 @@ impl Spawner {
 
 
         // clear the node from the known hosts file
-        self.clear_known_host(&self.preset_name)?;
+        // try to clear the node from the known hosts file
+        let _ = self.clear_known_host(&node_name);
         self.spawn_vscode(&self.preset_name, session)?;
         Ok(())
     }
@@ -230,11 +231,13 @@ impl Spawner {
     }
 
     pub fn clear_known_host(&self, node_alias: &str) -> Result<()> {
-        if std::path::Path::new("$HOME/.ssh/known_hosts").exists() {
-            let clear_command = format!(
-                "ssh-keygen -f $HOME/.ssh/known_hosts -R {}", node_alias);
-            Command::new(clear_command)
-                .spawn()?;
+        let home_path = std::env::var("HOME")?;
+        let known_hosts_path = format!("{}/.ssh/known_hosts", home_path);
+        if std::path::Path::new(&known_hosts_path).exists() {
+            // don't print the output of the command
+            Command::new("ssh-keygen")
+                .args(&["-f", &known_hosts_path, "-R", &node_alias])
+                .output()?;
         }
         Ok(())
     }

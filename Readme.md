@@ -35,33 +35,31 @@ Shell Command: Install 'code' command in PATH
 touch ~/.ssh/config
 ```
 in the terminal.
+- `openssl` installed. Openssl can be installed on debian based systems (Debian, Ubuntu, Linux Mint)
+```sudo apt-get install libssl-dev```
+On macos, it can be installed using homebrew:
+```brew install openssl```
 ## Prerequisites: Remote machine
 - Slurm installed: Check with `scontrol show partition`, if it returns a list of partitions, you are good to go.
-## Installation: Download the binary
-1. Download the binary from the [releases page](TODO)
-2. Make it executable with 
-```bash
-chmod +x code-remote
-```
-3. Move it to a directory that is in your PATH. You can find out which directories are in your PATH with 
-```bash
-echo $PATH
-```
 ## Installation: Build from source
 To build the binary from source, you must have rust and cargo installed.
-1. Clone the repository with 
-```bash
-git clone [TODO]
+1. Check if rust and cargo is installed, to do this, type `cargo --version`, if it returns a version, cargo is already installed, if it returns an error, you need to install cargo and rust with
 ```
-2. Change into the directory with 
+curl https://sh.rustup.rs -sSf | sh
+```
+2. Clone the repository with 
+```bash
+git clone https://github.com/Gordi42/code-remote.git
+```
+3. Change into the directory with 
 ```bash
 cd code-remote
 ```
-3. Build the binary with 
+4. Build the binary with 
 ```bash
 cargo build --release
 ```
-4. Move the binary to a directory that is in your PATH. The binary will be in the `target/release` directory.
+5. Move the binary to a directory that is in your PATH. The binary will be in the `target/release` directory.
 
 # Usage
 ## Setting up the remote host

@@ -39,7 +39,9 @@ in the terminal.
 sudo apt-get install libssl-dev
 ```
 On macos, it can be installed using homebrew:
-```brew install openssl```
+```bash
+brew install openssl
+```
 ## Prerequisites: Remote machine
 - Slurm installed: Check with `scontrol show partition`, if it returns a list of partitions, you are good to go.
 ## Installation: Build from source

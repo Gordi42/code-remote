@@ -35,7 +35,9 @@ touch ~/.ssh/config
 ```
 in the terminal.
 - `openssl` installed. Openssl can be installed on debian based systems (Debian, Ubuntu, Linux Mint)
-```sudo apt-get install libssl-dev```
+```bash
+sudo apt-get install libssl-dev
+```
 On macos, it can be installed using homebrew:
 ```brew install openssl```
 ## Prerequisites: Remote machine

@@ -9,7 +9,6 @@ A terminal user interface to automate the process of allocating a slurm-session 
 - [Installation](#installation)
   - [Prerequisites: Local Machine](#prerequisites-local-machine)
   - [Prerequisites: Remote machine](#prerequisites-remote-machine)
-  - [Installation: Download the binary](#installation-download-the-binary)
   - [Installation: Build from source](#installation-build-from-source)
 - [Usage](#usage)
   - [Setting up the remote host](#setting-up-the-remote-host)
@@ -44,7 +43,7 @@ On macos, it can be installed using homebrew:
 ## Installation: Build from source
 To build the binary from source, you must have rust and cargo installed.
 1. Check if rust and cargo is installed, to do this, type `cargo --version`, if it returns a version, cargo is already installed, if it returns an error, you need to install cargo and rust with
-```
+```bash
 curl https://sh.rustup.rs -sSf | sh
 ```
 2. Clone the repository with 

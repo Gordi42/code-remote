@@ -248,14 +248,20 @@ impl Spawner {
     pub fn get_node_name(&self, session: &mut Session) -> Result<Option<String>> {
 
         // get the node name
-        let command = format!("squeue -u $USER --name {}", self.preset_name);
+        let command = format!("squeue -u $USER --name {} --noheader --format=%N", self.preset_name);
         let mut channel = session.channel_session()?;
         channel.exec(&command)?;
         // read the output
         let mut output = String::new();
         channel.read_to_string(&mut output)?;
 
+        // If the output is empty, return None
+        if output.is_empty() {
+            return Ok(None);
+        }
+
         Ok(Some(output.trim().to_string()))
+
     }
 
     pub fn salloc(&self, session: &mut Session, cluster: &Cluster) -> Result<()> {

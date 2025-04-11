@@ -8,7 +8,6 @@ use serde::{Serialize, Deserialize};
 use std::{fs, fs::OpenOptions, io::Write};
 
 
-const NODE_NAME_REGEX: &str = r"l\d{5}";
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Spawner {
@@ -256,17 +255,7 @@ impl Spawner {
         let mut output = String::new();
         channel.read_to_string(&mut output)?;
 
-        // Create a regex pattern to match "lXXXXX"
-        let re = Regex::new(NODE_NAME_REGEX)?;
-
-        // Search for the pattern in the text
-        if let Some(mat) = re.find(&output) {
-            let pattern = mat.as_str();
-            Ok(Some(String::from(pattern)))
-        } else {
-            Ok(None)
-        }
-
+        Ok(Some(output.trim().to_string()))
     }
 
     pub fn salloc(&self, session: &mut Session, cluster: &Cluster) -> Result<()> {

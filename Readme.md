@@ -44,25 +44,17 @@ brew install openssl
 ```
 ## Prerequisites: Remote machine
 - Slurm installed: Check with `scontrol show partition`, if it returns a list of partitions, you are good to go.
-## Installation: Build from source
-To build the binary from source, you must have rust and cargo installed.
+
+## Installation: Using cargo
 1. Check if rust and cargo is installed, to do this, type `cargo --version`, if it returns a version, cargo is already installed, if it returns an error, you need to install cargo and rust with
 ```bash
 curl https://sh.rustup.rs -sSf | sh
 ```
-2. Clone the repository with 
+2. Install with cargo
 ```bash
-git clone https://github.com/Gordi42/code-remote.git
+cargo install code-remote
 ```
-3. Change into the directory with 
-```bash
-cd code-remote
-```
-4. Build the binary with 
-```bash
-cargo build --release
-```
-5. Move the binary to a directory that is in your PATH. The binary will be in the `target/release` directory.
+or, if you want to build from source, follow the instructions below.
 
 # Usage
 ## Setting up the remote host
@@ -91,6 +83,27 @@ Select the host that you want to remove and press 'd'. You will be asked to conf
 Similar to selecting a host: Navigate through the session list with the arrow keys and select the session that you want to spawn. Press enter to spawn the session. If the session is successfully spawned, you will be directed to the VSCode menu. Otherwise, an error message will be displayed.
 ## Editing the configuration files manually
 The configuration files are located in `~/.config/code-remote`. You can edit the files with a text editor. The `clusters.toml` file contains the remote hosts, and the `($Hostname).toml` file contains the information about the corresponding sessions.
+
+## Build from source
+To build the binary from source, you must have rust and cargo installed.
+1. Check if rust and cargo is installed, to do this, type `cargo --version`, if it returns a version, cargo is already installed, if it returns an error, you need to install cargo and rust with
+```bash
+curl https://sh.rustup.rs -sSf | sh
+```
+2. Clone the repository with 
+```bash
+git clone https://github.com/Gordi42/code-remote.git
+```
+3. Change into the directory with 
+```bash
+cd code-remote
+```
+4. Build the binary with 
+```bash
+cargo build --release
+```
+5. Move the binary to a directory that is in your PATH. The binary will be in the `target/release` directory.
+
 
 # Author
 Silvano Rosenau

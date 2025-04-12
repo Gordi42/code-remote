@@ -2,7 +2,9 @@
 name = "code-remote"
 version = "1.0.0"
 edition = "2021"
-
+authors = ["Silvano Gordian Rosenau <silvano.rosenau@uni-hamburg.de>"]
+description = "A terminal user interface to connect VS code to a computing cluster."
+license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]

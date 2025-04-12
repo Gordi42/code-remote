@@ -258,10 +258,10 @@ pub trait DoubleColumnMenu<T: Serialize + for<'a> Deserialize<'a> + PartialEq + 
     }
 
     fn render_editor(&mut self, f: &mut Frame) {
-        let window_width = f.size().width;
+        let window_width = f.area().width;
         let text_area_width = (0.8 * (window_width as f32)) as u16;
 
-        let rect = centered_rect(f.size(), text_area_width, 3);
+        let rect = centered_rect(f.area(), text_area_width, 3);
 
         f.render_widget(Clear, rect); //this clears out the background
 

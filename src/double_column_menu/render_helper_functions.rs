@@ -15,7 +15,7 @@ pub fn render_border(f: &mut Frame, area: &Rect, title: &str,
     // add a <tab> to the title if the widget is not focused
     let block = match is_focused {
         true => block,
-        false => block.title(block::Title::from("<tab>")
+        false => block.title_top(Line::from("<tab>")
                             .alignment(Alignment::Right)),
     };
     f.render_widget(block.clone(), *area);
@@ -62,10 +62,10 @@ pub fn render_remove_dialog(f: &mut Frame) {
 }
 
 pub fn render_info_dialog(f: &mut Frame, text: &str, color: Color, vsize: u16) {
-    let window_width = f.size().width;
+    let window_width = f.area().width;
     let text_area_width = (0.8 * (window_width as f32)) as u16;
 
-    let rect = centered_rect(f.size(), text_area_width, vsize+2);
+    let rect = centered_rect(f.area(), text_area_width, vsize+2);
     f.render_widget(Clear, rect); //this clears out the background
     f.render_widget(
         Paragraph::new(text)

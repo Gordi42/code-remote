@@ -18,7 +18,7 @@ pub fn render(app: &mut App, f: &mut Frame) {
             ]
             .as_ref(),
         )
-        .split(f.size());
+        .split(f.area());
 
     // make a info text at the bottom
     f.render_widget(
